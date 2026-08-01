@@ -3,20 +3,19 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Órdenes de servicio</title>
+<title>ReWop</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
-    --bg:#F6F4EF; --surface:#FFFFFF; --surface-2:#EFECE3;
-    --border:#E1DDD1; --border-strong:#C9C3B2;
-    --text:#23221D; --text-2:#6B6960; --text-muted:#9B9788;
-    --accent:#0F6E56; --accent-light:#E1F5EE; --accent-text:#085041;
-    --danger:#A32D2D; --danger-bg:#FCEBEB;
-    --warning:#854F0B; --warning-bg:#FAEEDA;
-    --success:#3B6D11; --success-bg:#EAF3DE;
-    --neutral-bg:#E4E1D8; --neutral-text:#5F5E5A;
+    --bg:#171717; --sidebar-bg:#121212; --surface:#1e1e1e; --surface-2:#262626; --surface-hover:#2a2a2a;
+    --border:#2c2c2c; --border-strong:#3a3a3a;
+    --text:#ededed; --text-2:#a0a0a0; --text-muted:#6b6b6b;
+    --accent:#3ecf8e; --accent-text:#3ecf8e; --accent-bg:rgba(62,207,142,.12); --on-accent:#0b1f16;
+    --danger:#f56565; --danger-bg:rgba(245,101,101,.12);
+    --warning:#f0b429; --warning-bg:rgba(240,180,41,.12);
+    --neutral-bg:#333333; --neutral-text:#b0b0b0;
     --radius:8px;
   }
   *{box-sizing:border-box;}
@@ -24,54 +23,92 @@
   input,select,textarea,button{font-family:inherit;font-size:14px;}
   input,select,textarea{
     width:100%;padding:8px 10px;border:1px solid var(--border-strong);border-radius:var(--radius);
-    background:var(--surface);color:var(--text);
+    background:var(--surface-2);color:var(--text);
   }
   input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;}
   button{
-    padding:9px 16px;border-radius:var(--radius);border:1px solid var(--border-strong);
-    background:var(--surface);color:var(--text);cursor:pointer;font-weight:500;
+    padding:8px 14px;border-radius:var(--radius);border:1px solid var(--border-strong);
+    background:var(--surface-2);color:var(--text);cursor:pointer;font-weight:500;
   }
-  button:hover{background:var(--surface-2);}
-  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
-  button.primary:hover{background:var(--accent-text);}
-  button.danger{color:var(--danger);border-color:var(--danger);}
+  button:hover{background:var(--surface-hover);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600;}
+  button.primary:hover{filter:brightness(1.08);}
+  button.ghost{background:none;border:none;color:var(--text-2);}
+  button.ghost:hover{color:var(--text);background:var(--surface-2);}
   button.small{padding:5px 10px;font-size:12px;}
   label{display:block;font-size:12px;color:var(--text-2);margin-bottom:4px;}
   .field{margin-bottom:12px;}
   .ticket-num{font-family:'IBM Plex Mono',monospace;font-weight:500;}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
   .badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:500;white-space:nowrap;}
   .row{display:flex;gap:12px;}
   .row > *{flex:1;}
-  .hidden{display:none !important;}
-  a{color:var(--accent-text);}
-  #app{max-width:1000px;margin:0 auto;padding:24px 16px 64px;}
-  .topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--border);}
-  .topbar .brand{font-weight:600;display:flex;align-items:center;gap:8px;}
-  .tabs{display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid var(--border);}
-  .tabs button{border:none;background:none;border-radius:0;padding:10px 4px;margin-right:20px;color:var(--text-2);font-weight:500;}
-  .tabs button.active{color:var(--text);border-bottom:2px solid var(--accent);}
-  .metric{background:var(--surface-2);border-radius:var(--radius);padding:14px 16px;}
-  .metric .num{font-size:22px;font-weight:600;}
+  a{color:var(--accent-text);text-decoration:none;}
+  svg.icon{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;}
+
+  #shell{display:flex;min-height:100vh;}
+  #sidebar{width:220px;flex-shrink:0;background:var(--sidebar-bg);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 12px;}
+  .brand{display:flex;align-items:center;gap:8px;padding:8px 8px 20px;font-weight:700;font-size:16px;letter-spacing:-.01em;}
+  .brand .dot{width:10px;height:10px;border-radius:3px;background:var(--accent);}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius);color:var(--text-2);font-weight:500;cursor:pointer;margin-bottom:2px;}
+  .nav-item:hover{background:var(--surface-2);color:var(--text);}
+  .nav-item.active{background:var(--accent-bg);color:var(--accent-text);}
+  .sidebar-footer{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);}
+  .sidebar-user{padding:8px;font-size:12px;color:var(--text-2);}
+  .sidebar-user .name{color:var(--text);font-weight:500;font-size:13px;}
+
+  #main{flex:1;padding:28px 32px;max-width:1100px;}
+  h1.page-title{font-size:20px;font-weight:700;margin:0 0 4px;}
+  p.page-sub{color:var(--text-2);margin:0 0 22px;font-size:13px;}
+
+  .metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+  .metric .num{font-size:22px;font-weight:700;}
   .metric .lbl{font-size:12px;color:var(--text-2);}
-  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;}
-  .ord-row{display:grid;grid-template-columns:56px 1fr 140px 150px 24px;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;margin-bottom:8px;}
-  .ord-row:hover{border-color:var(--border-strong);}
-  .ord-head{display:grid;grid-template-columns:56px 1fr 140px 150px 24px;gap:10px;padding:0 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;}
-  .modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:10;}
-  .modal{background:var(--surface);border-radius:12px;max-width:560px;width:100%;padding:24px;max-height:85vh;overflow:auto;}
-  .section-title{font-weight:600;font-size:15px;margin:20px 0 10px;}
-  .msg-box{background:var(--surface-2);border-radius:var(--radius);padding:10px 12px;font-size:13px;white-space:pre-wrap;margin:8px 0;}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px;}
+
+  .ord-row{display:grid;grid-template-columns:56px 1fr 150px 150px 20px;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;margin-bottom:8px;}
+  .ord-row:hover{border-color:var(--border-strong);background:var(--surface-hover);}
+  .ord-head{display:grid;grid-template-columns:56px 1fr 150px 150px 20px;gap:10px;padding:0 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+
+  .back-link{display:flex;align-items:center;gap:6px;color:var(--text-2);font-size:13px;margin-bottom:14px;cursor:pointer;width:fit-content;}
+  .back-link:hover{color:var(--text);}
+
+  .detail-grid{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;}
+  @media (max-width:800px){ .detail-grid{grid-template-columns:1fr;} }
+
+  .section-title{font-weight:600;font-size:13px;margin:0 0 12px;color:var(--text-2);text-transform:uppercase;letter-spacing:.03em;}
+  .msg-box{background:var(--surface-2);border-radius:var(--radius);padding:10px 12px;font-size:13px;white-space:pre-wrap;margin:10px 0;border:1px solid var(--border);}
+
+  .timeline{position:relative;padding-left:22px;}
+  .timeline::before{content:'';position:absolute;left:5px;top:4px;bottom:4px;width:1px;background:var(--border-strong);}
+  .tl-item{position:relative;padding-bottom:18px;}
+  .tl-item::before{content:'';position:absolute;left:-22px;top:3px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);}
+  .tl-item .tl-title{font-weight:500;font-size:13px;}
+  .tl-item .tl-meta{font-size:12px;color:var(--text-muted);margin-top:2px;}
+
   table.cfg{width:100%;border-collapse:collapse;font-size:13px;}
   table.cfg th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--border);}
-  table.cfg td{padding:6px 8px;border-bottom:1px solid var(--border);}
+  table.cfg td{padding:8px;border-bottom:1px solid var(--border);vertical-align:top;}
   .err{color:var(--danger);font-size:13px;margin-top:8px;}
+  .tabs{display:flex;gap:20px;margin-bottom:18px;border-bottom:1px solid var(--border);}
+  .tabs button{border:none;background:none;border-radius:0;padding:0 0 10px;color:var(--text-2);font-weight:500;}
+  .tabs button.active{color:var(--text);border-bottom:2px solid var(--accent);}
 </style>
 </head>
 <body>
 <div id="root"></div>
 
 <script>
+const ICONS = {
+  panel: `<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
+  plus: `<svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  settings: `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+  chevronRight: `<svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>`,
+  chevronLeft: `<svg class="icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>`,
+  message: `<svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`,
+  logout: `<svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+};
+
 const SUPABASE_URL = "https://fdxvtrcnfwsdnyvmwbdz.supabase.co";
 const SUPABASE_KEY = "sb_publishable_vVPfjrBumzXiUZcvedL_mw__x1zMA3z";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -79,7 +116,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let STATE = {
   session: null, profile: null,
   tiposEquipo: [], marcas: [], estadosAdmin: [], estadosTecnicos: [], tecnicos: [],
-  ordenes: [], tab: 'panel', openOrder: null, search: ''
+  ordenes: [], view: 'panel', detailOrderId: null, search: '', historial: []
 };
 
 const root = document.getElementById('root');
@@ -87,10 +124,10 @@ const root = document.getElementById('root');
 function badgeStyle(nombre){
   const n = (nombre||'').toLowerCase();
   if(n.includes('no aceptad') || n.includes('rechaz')) return 'background:var(--danger-bg);color:var(--danger);';
-  if(n.includes('entregad') || n.includes('terminado') || n.includes('aceptad')) return 'background:var(--success-bg);color:var(--success);';
+  if(n.includes('entregad') || n.includes('terminado') || n.includes('aceptad')) return 'background:var(--accent-bg);color:var(--accent-text);';
   if(n.includes('esperando') || n.includes('deposito') || n.includes('depósito') || n.includes('informar')) return 'background:var(--warning-bg);color:var(--warning);';
   if(n.includes('recepcion')) return 'background:var(--neutral-bg);color:var(--neutral-text);';
-  return 'background:var(--accent-light);color:var(--accent-text);';
+  return 'background:var(--accent-bg);color:var(--accent-text);';
 }
 
 function fillTemplate(tpl, orden){
@@ -104,6 +141,11 @@ function fillTemplate(tpl, orden){
 function waLink(telefono, texto){
   let digits = (telefono||'').replace(/\D/g,'');
   return `https://wa.me/${digits}?text=${encodeURIComponent(texto)}`;
+}
+
+function fmtFecha(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-AR', { day:'2-digit', month:'short' }) + ' ' + d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
 }
 
 async function loadRefData(){
@@ -132,6 +174,14 @@ async function loadOrdenes(){
   STATE.ordenes = data;
 }
 
+async function loadHistorial(ordenId){
+  const { data, error } = await sb.from('historial_estados')
+    .select(`*, estado_admin:estados_admin(nombre), estado_tecnico:estados_tecnicos(nombre), usuario:profiles(full_name)`)
+    .eq('orden_id', ordenId)
+    .order('fecha', { ascending:false });
+  STATE.historial = error ? [] : data;
+}
+
 async function loadProfile(userId){
   const { data } = await sb.from('profiles').select('*').eq('id', userId).single();
   STATE.profile = data;
@@ -141,21 +191,22 @@ async function loadProfile(userId){
 
 function render(){
   if(!STATE.session){ renderLogin(); return; }
-  renderApp();
+  renderShell();
 }
 
 function renderLogin(){
   root.innerHTML = `
-  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);">
     <div class="card" style="width:320px;">
-      <p style="font-weight:600;font-size:16px;margin:0 0 4px;">Órdenes de servicio</p>
-      <p style="color:var(--text-2);margin:0 0 20px;font-size:13px;">Iniciá sesión para continuar</p>
+      <div class="brand" style="padding:0 0 20px;"><span class="dot"></span>ReWop</div>
+      <p style="color:var(--text-2);margin:-12px 0 20px;font-size:13px;">Iniciá sesión para continuar</p>
       <div class="field"><label>Email</label><input id="li-email" type="email" placeholder="tu@email.com" /></div>
       <div class="field"><label>Contraseña</label><input id="li-pass" type="password" /></div>
       <button class="primary" style="width:100%;" onclick="doLogin()">Ingresar</button>
       <div id="li-err" class="err"></div>
     </div>
   </div>`;
+  document.getElementById('li-pass').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
 }
 
 async function doLogin(){
@@ -176,38 +227,48 @@ async function doLogout(){
   render();
 }
 
-function renderApp(){
+function renderShell(){
   const role = STATE.profile?.role || 'tecnico';
+  const navItems = [
+    ['panel', 'Panel', ICONS.panel],
+    ['nueva', 'Nueva orden', ICONS.plus],
+  ];
+  if(role === 'admin') navItems.push(['config', 'Configuración', ICONS.settings]);
+
   root.innerHTML = `
-    <div class="topbar">
-      <div class="brand"><i class="ti ti-tool"></i> Órdenes de servicio</div>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span style="color:var(--text-2);font-size:13px;">${STATE.profile?.full_name || ''} · ${role}</span>
-        <button class="small" onclick="doLogout()">Salir</button>
+    <div id="shell">
+      <div id="sidebar">
+        <div class="brand"><span class="dot"></span>ReWop</div>
+        ${navItems.map(([k,l,icon]) => `
+          <div class="nav-item ${STATE.view===k?'active':''}" onclick="setView('${k}')">${icon}<span>${l}</span></div>
+        `).join('')}
+        <div class="sidebar-footer">
+          <div class="sidebar-user">
+            <div class="name">${STATE.profile?.full_name || ''}</div>
+            <div>${role}</div>
+          </div>
+          <div class="nav-item" onclick="doLogout()">${ICONS.logout}<span>Salir</span></div>
+        </div>
       </div>
+      <div id="main"></div>
     </div>
-    <div id="app"></div>
   `;
-  const app = document.getElementById('app');
-  const tabs = [['panel','Panel'],['nueva','Nueva orden']];
-  if(role === 'admin') tabs.push(['config','Configuración']);
-  app.innerHTML = `
-    <div class="tabs">
-      ${tabs.map(([k,l]) => `<button class="${STATE.tab===k?'active':''}" onclick="setTab('${k}')">${l}</button>`).join('')}
-    </div>
-    <div id="tabcontent"></div>
-  `;
-  renderTab();
-  if(STATE.openOrder) renderOrderModal(STATE.openOrder);
+  renderView();
 }
 
-function setTab(t){ STATE.tab = t; render(); }
+function setView(v, orderId){
+  STATE.view = v;
+  STATE.detailOrderId = orderId || null;
+  render();
+  if(v === 'detail' && orderId) loadHistorial(orderId).then(() => renderView());
+}
 
-function renderTab(){
-  const c = document.getElementById('tabcontent');
-  if(STATE.tab === 'panel') return renderPanel(c);
-  if(STATE.tab === 'nueva') return renderNuevaOrden(c);
-  if(STATE.tab === 'config') return renderConfig(c);
+function renderView(){
+  const m = document.getElementById('main');
+  if(STATE.view === 'panel') return renderPanel(m);
+  if(STATE.view === 'nueva') return renderNuevaOrden(m);
+  if(STATE.view === 'config') return renderConfig(m);
+  if(STATE.view === 'detail') return renderDetail(m);
 }
 
 function renderPanel(c){
@@ -221,31 +282,36 @@ function renderPanel(c){
   );
 
   c.innerHTML = `
+    <h1 class="page-title">Panel</h1>
+    <p class="page-sub">Vista general de todas las órdenes</p>
     <div class="metrics">
       <div class="metric"><div class="num">${STATE.ordenes.length}</div><div class="lbl">Total órdenes</div></div>
       <div class="metric"><div class="num">${abiertos}</div><div class="lbl">Abiertas</div></div>
       <div class="metric"><div class="num">${paraInformar}</div><div class="lbl">Para informar</div></div>
       <div class="metric"><div class="num">${enReparacion}</div><div class="lbl">En reparación</div></div>
     </div>
-    <input placeholder="Buscar por cliente o número" style="margin-bottom:14px;" value="${STATE.search}" oninput="STATE.search=this.value; renderPanel(document.getElementById('tabcontent'))" />
+    <input id="search-input" placeholder="Buscar por cliente o número" style="margin-bottom:14px;max-width:320px;" value="${STATE.search}" />
     <div class="ord-head"><span>#</span><span>Cliente / equipo</span><span>Admin</span><span>Técnico</span><span></span></div>
     ${list.length === 0 ? `<p style="color:var(--text-2);">No hay órdenes todavía.</p>` : ''}
     ${list.map(o => `
-      <div class="ord-row" onclick="openOrder('${o.id}')">
+      <div class="ord-row" onclick="setView('detail','${o.id}')">
         <span class="ticket-num">#${o.numero}</span>
         <span>${o.cliente_nombre} — ${o.tipo_equipo?.nombre||''} ${o.marca?.nombre||''}</span>
         <span class="badge" style="${badgeStyle(o.estado_admin?.nombre)}">${o.estado_admin?.nombre||'—'}</span>
         <span class="badge" style="${badgeStyle(o.estado_tecnico?.nombre)}">${o.estado_tecnico?.nombre||'—'}</span>
-        <i class="ti ti-chevron-right" style="color:var(--text-muted);"></i>
+        <span style="color:var(--text-muted);">${ICONS.chevronRight}</span>
       </div>
     `).join('')}
   `;
+  const si = document.getElementById('search-input');
+  si.addEventListener('input', () => { STATE.search = si.value; renderPanel(c); si.focus(); si.setSelectionRange(si.value.length, si.value.length); });
 }
 
 function renderNuevaOrden(c){
   c.innerHTML = `
+    <h1 class="page-title">Nueva orden</h1>
+    <p class="page-sub">Recepción de un equipo</p>
     <div class="card" style="max-width:480px;">
-      <p style="font-weight:600;margin:0 0 16px;">Nueva orden</p>
       <div class="field"><label>Nombre del cliente</label><input id="no-nombre" placeholder="Juan Pérez" /></div>
       <div class="field"><label>Teléfono</label><input id="no-tel" placeholder="11 2345 6789" /></div>
       <div class="field"><label>Trabajo</label><input id="no-trabajo" placeholder="No enciende, pantalla rota, etc." /></div>
@@ -286,127 +352,144 @@ async function crearOrden(){
   const { data, error } = await sb.from('ordenes').insert(payload).select().single();
   if(error){ document.getElementById('no-err').textContent = 'No se pudo crear la orden.'; console.error(error); return; }
   await sb.from('historial_estados').insert([
-    { orden_id: data.id, tipo_flujo:'admin', estado_admin_id: estadoAdminInicial, usuario_id: STATE.session.user.id },
+    { orden_id: data.id, tipo_flujo:'admin', estado_admin_id: estadoAdminInitial, usuario_id: STATE.session.user.id },
     { orden_id: data.id, tipo_flujo:'tecnico', estado_tecnico_id: estadoTecInicial, usuario_id: STATE.session.user.id }
   ]);
   await loadOrdenes();
-  STATE.tab = 'panel'; STATE.openOrder = data.id;
-  render();
+  setView('detail', data.id);
 }
 
-function openOrder(id){ STATE.openOrder = id; render(); }
-function closeOrder(){ STATE.openOrder = null; render(); }
-
-function renderOrderModal(id){
-  const o = STATE.ordenes.find(x => x.id === id);
-  if(!o) return;
+function renderDetail(c){
+  const o = STATE.ordenes.find(x => x.id === STATE.detailOrderId);
+  if(!o){ c.innerHTML = `<p>Orden no encontrada.</p>`; return; }
   const role = STATE.profile?.role;
   const canEditTecnico = role === 'admin' || role === 'tecnico';
   const canEditAdmin = role === 'admin' || role === 'operador';
 
-  const div = document.createElement('div');
-  div.className = 'modal-bg';
-  div.innerHTML = `
-    <div class="modal">
-      <div style="display:flex;justify-content:space-between;align-items:start;">
-        <div>
-          <p style="font-weight:600;margin:0;" class="ticket-num">Orden #${o.numero}</p>
-          <p style="color:var(--text-2);margin:4px 0 0;font-size:13px;">${o.cliente_nombre} · ${o.cliente_telefono}</p>
+  const activityOptions = [];
+  if(canEditAdmin){
+    activityOptions.push(`<optgroup label="Flujo administrativo">`);
+    STATE.estadosAdmin.forEach(e => activityOptions.push(`<option value="admin:${e.id}">${e.nombre}</option>`));
+    activityOptions.push(`</optgroup>`);
+  }
+  if(canEditTecnico){
+    activityOptions.push(`<optgroup label="Flujo técnico">`);
+    STATE.estadosTecnicos.forEach(e => activityOptions.push(`<option value="tecnico:${e.id}">${e.nombre}</option>`));
+    activityOptions.push(`</optgroup>`);
+  }
+
+  c.innerHTML = `
+    <div class="back-link" onclick="setView('panel')">${ICONS.chevronLeft}<span>Volver al panel</span></div>
+    <h1 class="page-title ticket-num">Orden #${o.numero}</h1>
+    <p class="page-sub">${o.cliente_nombre} · ${o.cliente_telefono}</p>
+
+    <div class="detail-grid">
+      <div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="section-title">Agregar actividad</div>
+          <div class="row" style="align-items:end;">
+            <div><select id="act-select">${activityOptions.join('')}</select></div>
+            <button class="primary" style="flex:0;white-space:nowrap;" onclick="agregarActividad('${o.id}')">${ICONS.plus} Agregar</button>
+          </div>
         </div>
-        <button class="small" onclick="closeOrder()"><i class="ti ti-x"></i></button>
+
+        <div class="card">
+          <div class="section-title">Historial de actividades</div>
+          <div class="timeline" id="timeline">
+            ${STATE.historial.length === 0 ? '<p style="color:var(--text-2);font-size:13px;">Sin actividad registrada.</p>' : STATE.historial.map(h => `
+              <div class="tl-item">
+                <div class="tl-title">${h.tipo_flujo === 'admin' ? (h.estado_admin?.nombre||'') : (h.estado_tecnico?.nombre||'')}
+                  <span class="badge" style="${h.tipo_flujo==='admin'?'background:var(--accent-bg);color:var(--accent-text);':'background:var(--neutral-bg);color:var(--neutral-text);'}margin-left:6px;font-size:10px;">${h.tipo_flujo === 'admin' ? 'Administrativo' : 'Técnico'}</span>
+                </div>
+                <div class="tl-meta">${fmtFecha(h.fecha)} · ${h.usuario?.full_name || 'Sistema'}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
       </div>
 
-      <div class="section-title">Equipo</div>
-      <p style="margin:0;font-size:13px;color:var(--text-2);">
-        ${o.tipo_equipo?.nombre||''} ${o.marca?.nombre||''} ${o.modelo||''} ${o.numero_serie?('· N/S '+o.numero_serie):''}<br/>
-        Trabajo: ${o.trabajo}<br/>
-        ${o.accesorios ? 'Accesorios: '+o.accesorios+'<br/>' : ''}
-        ${o.observaciones ? 'Obs: '+o.observaciones : ''}
-      </p>
-
-      <div class="section-title">Estado administrativo</div>
-      <div class="row" style="align-items:end;">
-        <div>
-          <select id="sel-admin" ${canEditAdmin?'':'disabled'}>
-            ${STATE.estadosAdmin.map(e=>`<option value="${e.id}" ${e.id===o.estado_admin?.id?'selected':''}>${e.nombre}</option>`).join('')}
-          </select>
+      <div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="section-title">Equipo</div>
+          <p style="margin:0 0 4px;font-size:13px;">${o.tipo_equipo?.nombre||''} ${o.marca?.nombre||''} ${o.modelo||''}</p>
+          ${o.numero_serie ? `<p style="margin:0 0 4px;font-size:12px;color:var(--text-2);">N/S ${o.numero_serie}</p>` : ''}
+          <p style="margin:8px 0 0;font-size:13px;color:var(--text-2);">${o.trabajo}</p>
+          ${o.accesorios ? `<p style="margin:8px 0 0;font-size:12px;color:var(--text-2);">Accesorios: ${o.accesorios}</p>` : ''}
+          ${o.observaciones ? `<p style="margin:8px 0 0;font-size:12px;color:var(--text-2);">Obs: ${o.observaciones}</p>` : ''}
         </div>
-        ${canEditAdmin ? `<button onclick="cambiarEstadoAdmin('${o.id}')">Guardar</button>` : ''}
-      </div>
-      ${o.estado_admin?.mensaje_whatsapp ? `
-        <div class="msg-box">${fillTemplate(o.estado_admin.mensaje_whatsapp, o)}</div>
-        <button onclick="enviarWhatsapp('${o.id}')"><i class="ti ti-brand-whatsapp"></i> Abrir WhatsApp con este mensaje</button>
-      ` : ''}
 
-      <div class="section-title">Estado técnico</div>
-      <div class="row" style="align-items:end;">
-        <div>
-          <select id="sel-tecnico-estado" ${canEditTecnico?'':'disabled'}>
-            ${STATE.estadosTecnicos.map(e=>`<option value="${e.id}" ${e.id===o.estado_tecnico?.id?'selected':''}>${e.nombre}</option>`).join('')}
-          </select>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="section-title">Estado actual</div>
+          <p style="margin:0 0 6px;font-size:12px;color:var(--text-2);">Administrativo</p>
+          <span class="badge" style="${badgeStyle(o.estado_admin?.nombre)}">${o.estado_admin?.nombre||'—'}</span>
+          <p style="margin:12px 0 6px;font-size:12px;color:var(--text-2);">Técnico</p>
+          <span class="badge" style="${badgeStyle(o.estado_tecnico?.nombre)}">${o.estado_tecnico?.nombre||'—'}</span>
+          ${o.estado_admin?.mensaje_whatsapp ? `
+            <div class="msg-box">${fillTemplate(o.estado_admin.mensaje_whatsapp, o)}</div>
+            <button style="width:100%;" onclick="enviarWhatsapp('${o.id}')">${ICONS.message} Abrir WhatsApp</button>
+          ` : ''}
         </div>
-        ${canEditTecnico ? `<button onclick="cambiarEstadoTecnico('${o.id}')">Guardar</button>` : ''}
-      </div>
 
-      <div class="section-title">Técnico asignado</div>
-      <div class="row" style="align-items:end;">
-        <div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="section-title">Técnico asignado</div>
           <select id="sel-tecnico" ${canEditAdmin?'':'disabled'}>
             <option value="">Sin asignar</option>
             ${STATE.tecnicos.map(t=>`<option value="${t.id}" ${t.id===o.tecnico_id?'selected':''}>${t.full_name}</option>`).join('')}
           </select>
+          ${canEditAdmin ? `<button style="width:100%;margin-top:8px;" onclick="asignarTecnico('${o.id}')">Guardar</button>` : ''}
         </div>
-        ${canEditAdmin ? `<button onclick="asignarTecnico('${o.id}')">Guardar</button>` : ''}
-      </div>
 
-      <div class="section-title">Presupuesto</div>
-      <div class="row">
-        <div><label>Monto</label><input id="pres-monto" type="number" value="${o.presupuesto_monto ?? ''}" ${canEditAdmin?'':'disabled'} /></div>
-        <div><label>Estado</label>
-          <select id="pres-estado" ${canEditAdmin?'':'disabled'}>
-            <option value="pendiente" ${o.presupuesto_estado==='pendiente'?'selected':''}>Pendiente</option>
-            <option value="aceptado" ${o.presupuesto_estado==='aceptado'?'selected':''}>Aceptado</option>
-            <option value="rechazado" ${o.presupuesto_estado==='rechazado'?'selected':''}>Rechazado</option>
-          </select>
+        <div class="card">
+          <div class="section-title">Presupuesto</div>
+          <div class="field"><label>Monto</label><input id="pres-monto" type="number" value="${o.presupuesto_monto ?? ''}" ${canEditAdmin?'':'disabled'} /></div>
+          <div class="field"><label>Estado</label>
+            <select id="pres-estado" ${canEditAdmin?'':'disabled'}>
+              <option value="pendiente" ${o.presupuesto_estado==='pendiente'?'selected':''}>Pendiente</option>
+              <option value="aceptado" ${o.presupuesto_estado==='aceptado'?'selected':''}>Aceptado</option>
+              <option value="rechazado" ${o.presupuesto_estado==='rechazado'?'selected':''}>Rechazado</option>
+            </select>
+          </div>
+          ${canEditAdmin ? `<button style="width:100%;" onclick="guardarPresupuesto('${o.id}')">Guardar presupuesto</button>` : ''}
         </div>
       </div>
-      ${canEditAdmin ? `<button onclick="guardarPresupuesto('${o.id}')" style="margin-top:8px;">Guardar presupuesto</button>` : ''}
     </div>
   `;
-  document.body.appendChild(div);
-  div.id = 'order-modal-bg';
 }
 
-async function cambiarEstadoAdmin(ordenId){
-  const estadoId = document.getElementById('sel-admin').value;
-  await sb.from('ordenes').update({ estado_admin_id: estadoId, updated_at: new Date().toISOString() }).eq('id', ordenId);
-  await sb.from('historial_estados').insert({ orden_id: ordenId, tipo_flujo:'admin', estado_admin_id: estadoId, usuario_id: STATE.session.user.id });
-  await refreshOrderModal(ordenId);
-}
-
-async function cambiarEstadoTecnico(ordenId){
-  const estadoId = document.getElementById('sel-tecnico-estado').value;
-  const estado = STATE.estadosTecnicos.find(e => e.id === estadoId);
-  const updates = { estado_tecnico_id: estadoId, updated_at: new Date().toISOString() };
-  if(estado?.dispara_estado_admin_id) updates.estado_admin_id = estado.dispara_estado_admin_id;
-  await sb.from('ordenes').update(updates).eq('id', ordenId);
-  const inserts = [{ orden_id: ordenId, tipo_flujo:'tecnico', estado_tecnico_id: estadoId, usuario_id: STATE.session.user.id }];
-  if(estado?.dispara_estado_admin_id) inserts.push({ orden_id: ordenId, tipo_flujo:'admin', estado_admin_id: estado.dispara_estado_admin_id, usuario_id: STATE.session.user.id });
-  await sb.from('historial_estados').insert(inserts);
-  await refreshOrderModal(ordenId);
+async function agregarActividad(ordenId){
+  const val = document.getElementById('act-select').value;
+  if(!val) return;
+  const [tipo, estadoId] = val.split(':');
+  if(tipo === 'admin'){
+    await sb.from('ordenes').update({ estado_admin_id: estadoId, updated_at: new Date().toISOString() }).eq('id', ordenId);
+    await sb.from('historial_estados').insert({ orden_id: ordenId, tipo_flujo:'admin', estado_admin_id: estadoId, usuario_id: STATE.session.user.id });
+  } else {
+    const estado = STATE.estadosTecnicos.find(e => e.id === estadoId);
+    const updates = { estado_tecnico_id: estadoId, updated_at: new Date().toISOString() };
+    if(estado?.dispara_estado_admin_id) updates.estado_admin_id = estado.dispara_estado_admin_id;
+    await sb.from('ordenes').update(updates).eq('id', ordenId);
+    const inserts = [{ orden_id: ordenId, tipo_flujo:'tecnico', estado_tecnico_id: estadoId, usuario_id: STATE.session.user.id }];
+    if(estado?.dispara_estado_admin_id) inserts.push({ orden_id: ordenId, tipo_flujo:'admin', estado_admin_id: estado.dispara_estado_admin_id, usuario_id: STATE.session.user.id });
+    await sb.from('historial_estados').insert(inserts);
+  }
+  await loadOrdenes();
+  await loadHistorial(ordenId);
+  renderDetail(document.getElementById('main'));
 }
 
 async function asignarTecnico(ordenId){
   const tecnicoId = document.getElementById('sel-tecnico').value || null;
   await sb.from('ordenes').update({ tecnico_id: tecnicoId, updated_at: new Date().toISOString() }).eq('id', ordenId);
-  await refreshOrderModal(ordenId);
+  await loadOrdenes();
+  renderDetail(document.getElementById('main'));
 }
 
 async function guardarPresupuesto(ordenId){
   const monto = document.getElementById('pres-monto').value || null;
   const estado = document.getElementById('pres-estado').value;
   await sb.from('ordenes').update({ presupuesto_monto: monto, presupuesto_estado: estado, updated_at: new Date().toISOString() }).eq('id', ordenId);
-  await refreshOrderModal(ordenId);
+  await loadOrdenes();
+  renderDetail(document.getElementById('main'));
 }
 
 async function enviarWhatsapp(ordenId){
@@ -416,19 +499,14 @@ async function enviarWhatsapp(ordenId){
   window.open(waLink(o.cliente_telefono, texto), '_blank');
 }
 
-async function refreshOrderModal(ordenId){
-  await loadOrdenes();
-  document.getElementById('order-modal-bg')?.remove();
-  renderOrderModal(ordenId);
-  renderPanel(document.getElementById('tabcontent'));
-}
-
 // ---------- CONFIGURACIÓN ----------
 
 function renderConfig(c){
   c.innerHTML = `
+    <h1 class="page-title">Configuración</h1>
+    <p class="page-sub">Tablas editables de la app</p>
     <div class="card" style="margin-bottom:16px;">
-      <p style="font-weight:600;margin:0 0 10px;">Tipos de equipo</p>
+      <div class="section-title">Tipos de equipo</div>
       <table class="cfg"><tbody id="cfg-tipos"></tbody></table>
       <div class="row" style="margin-top:10px;">
         <input id="new-tipo" placeholder="Nuevo tipo de equipo" />
@@ -436,7 +514,7 @@ function renderConfig(c){
       </div>
     </div>
     <div class="card" style="margin-bottom:16px;">
-      <p style="font-weight:600;margin:0 0 10px;">Marcas</p>
+      <div class="section-title">Marcas</div>
       <table class="cfg"><tbody id="cfg-marcas"></tbody></table>
       <div class="row" style="margin-top:10px;">
         <input id="new-marca" placeholder="Nueva marca" />
@@ -444,21 +522,21 @@ function renderConfig(c){
       </div>
     </div>
     <div class="card" style="margin-bottom:16px;">
-      <p style="font-weight:600;margin:0 0 10px;">Estados administrativos</p>
+      <div class="section-title">Estados administrativos</div>
       <table class="cfg"><thead><tr><th>Nombre</th><th>Mensaje WhatsApp</th></tr></thead><tbody id="cfg-eadmin"></tbody></table>
     </div>
     <div class="card">
-      <p style="font-weight:600;margin:0 0 10px;">Estados técnicos</p>
+      <div class="section-title">Estados técnicos</div>
       <table class="cfg"><thead><tr><th>Nombre</th><th>Dispara en admin</th></tr></thead><tbody id="cfg-etec"></tbody></table>
     </div>
   `;
   document.getElementById('cfg-tipos').innerHTML = STATE.tiposEquipo.map(t=>`<tr><td>${t.nombre}</td></tr>`).join('');
   document.getElementById('cfg-marcas').innerHTML = STATE.marcas.map(m=>`<tr><td>${m.nombre}</td></tr>`).join('');
   document.getElementById('cfg-eadmin').innerHTML = STATE.estadosAdmin.map(e=>`
-    <tr><td>${e.nombre}</td><td><textarea rows="2" style="font-size:12px;" onchange="actualizarMensaje('estados_admin','${e.id}',this.value)">${e.mensaje_whatsapp||''}</textarea></td></tr>
+    <tr><td style="white-space:nowrap;">${e.nombre}</td><td><textarea rows="2" style="font-size:12px;" onchange="actualizarMensaje('estados_admin','${e.id}',this.value)">${e.mensaje_whatsapp||''}</textarea></td></tr>
   `).join('');
   document.getElementById('cfg-etec').innerHTML = STATE.estadosTecnicos.map(e=>`
-    <tr><td>${e.nombre}</td><td>
+    <tr><td style="white-space:nowrap;">${e.nombre}</td><td>
       <select onchange="actualizarDisparo('${e.id}',this.value)">
         <option value="">Ninguno</option>
         ${STATE.estadosAdmin.map(a=>`<option value="${a.id}" ${a.id===e.dispara_estado_admin_id?'selected':''}>${a.nombre}</option>`).join('')}
@@ -473,7 +551,7 @@ async function agregarSimple(tabla, inputId){
   await sb.from(tabla).insert({ nombre: val });
   await loadRefData();
   document.getElementById(inputId).value = '';
-  renderConfig(document.getElementById('tabcontent'));
+  renderConfig(document.getElementById('main'));
 }
 
 async function actualizarMensaje(tabla, id, valor){
@@ -499,6 +577,5 @@ async function actualizarDisparo(estadoTecId, estadoAdminId){
   render();
 })();
 </script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2/dist/tabler-icons.min.css">
 </body>
 </html>
