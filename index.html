@@ -1,12 +1,504 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rewop - Ordenes de Trabajo</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Órdenes de servicio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#F6F4EF; --surface:#FFFFFF; --surface-2:#EFECE3;
+    --border:#E1DDD1; --border-strong:#C9C3B2;
+    --text:#23221D; --text-2:#6B6960; --text-muted:#9B9788;
+    --accent:#0F6E56; --accent-light:#E1F5EE; --accent-text:#085041;
+    --danger:#A32D2D; --danger-bg:#FCEBEB;
+    --warning:#854F0B; --warning-bg:#FAEEDA;
+    --success:#3B6D11; --success-bg:#EAF3DE;
+    --neutral-bg:#E4E1D8; --neutral-text:#5F5E5A;
+    --radius:8px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;}
+  input,select,textarea,button{font-family:inherit;font-size:14px;}
+  input,select,textarea{
+    width:100%;padding:8px 10px;border:1px solid var(--border-strong);border-radius:var(--radius);
+    background:var(--surface);color:var(--text);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+  button{
+    padding:9px 16px;border-radius:var(--radius);border:1px solid var(--border-strong);
+    background:var(--surface);color:var(--text);cursor:pointer;font-weight:500;
+  }
+  button:hover{background:var(--surface-2);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  button.primary:hover{background:var(--accent-text);}
+  button.danger{color:var(--danger);border-color:var(--danger);}
+  button.small{padding:5px 10px;font-size:12px;}
+  label{display:block;font-size:12px;color:var(--text-2);margin-bottom:4px;}
+  .field{margin-bottom:12px;}
+  .ticket-num{font-family:'IBM Plex Mono',monospace;font-weight:500;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;}
+  .badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:500;white-space:nowrap;}
+  .row{display:flex;gap:12px;}
+  .row > *{flex:1;}
+  .hidden{display:none !important;}
+  a{color:var(--accent-text);}
+  #app{max-width:1000px;margin:0 auto;padding:24px 16px 64px;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--border);}
+  .topbar .brand{font-weight:600;display:flex;align-items:center;gap:8px;}
+  .tabs{display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid var(--border);}
+  .tabs button{border:none;background:none;border-radius:0;padding:10px 4px;margin-right:20px;color:var(--text-2);font-weight:500;}
+  .tabs button.active{color:var(--text);border-bottom:2px solid var(--accent);}
+  .metric{background:var(--surface-2);border-radius:var(--radius);padding:14px 16px;}
+  .metric .num{font-size:22px;font-weight:600;}
+  .metric .lbl{font-size:12px;color:var(--text-2);}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;}
+  .ord-row{display:grid;grid-template-columns:56px 1fr 140px 150px 24px;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;margin-bottom:8px;}
+  .ord-row:hover{border-color:var(--border-strong);}
+  .ord-head{display:grid;grid-template-columns:56px 1fr 140px 150px 24px;gap:10px;padding:0 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;}
+  .modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:10;}
+  .modal{background:var(--surface);border-radius:12px;max-width:560px;width:100%;padding:24px;max-height:85vh;overflow:auto;}
+  .section-title{font-weight:600;font-size:15px;margin:20px 0 10px;}
+  .msg-box{background:var(--surface-2);border-radius:var(--radius);padding:10px 12px;font-size:13px;white-space:pre-wrap;margin:8px 0;}
+  table.cfg{width:100%;border-collapse:collapse;font-size:13px;}
+  table.cfg th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--border);}
+  table.cfg td{padding:6px 8px;border-bottom:1px solid var(--border);}
+  .err{color:var(--danger);font-size:13px;margin-top:8px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+const SUPABASE_URL = "https://fdxvtrcnfwsdnyvmwbdz.supabase.co";
+const SUPABASE_KEY = "sb_publishable_vVPfjrBumzXiUZcvedL_mw__x1zMA3z";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let STATE = {
+  session: null, profile: null,
+  tiposEquipo: [], marcas: [], estadosAdmin: [], estadosTecnicos: [], tecnicos: [],
+  ordenes: [], tab: 'panel', openOrder: null, search: ''
+};
+
+const root = document.getElementById('root');
+
+function badgeStyle(nombre){
+  const n = (nombre||'').toLowerCase();
+  if(n.includes('no aceptad') || n.includes('rechaz')) return 'background:var(--danger-bg);color:var(--danger);';
+  if(n.includes('entregad') || n.includes('terminado') || n.includes('aceptad')) return 'background:var(--success-bg);color:var(--success);';
+  if(n.includes('esperando') || n.includes('deposito') || n.includes('depósito') || n.includes('informar')) return 'background:var(--warning-bg);color:var(--warning);';
+  if(n.includes('recepcion')) return 'background:var(--neutral-bg);color:var(--neutral-text);';
+  return 'background:var(--accent-light);color:var(--accent-text);';
+}
+
+function fillTemplate(tpl, orden){
+  if(!tpl) return '';
+  return tpl
+    .replaceAll('{cliente_nombre}', orden.cliente_nombre || '')
+    .replaceAll('{numero}', orden.numero || '')
+    .replaceAll('{presupuesto_monto}', orden.presupuesto_monto ?? '');
+}
+
+function waLink(telefono, texto){
+  let digits = (telefono||'').replace(/\D/g,'');
+  return `https://wa.me/${digits}?text=${encodeURIComponent(texto)}`;
+}
+
+async function loadRefData(){
+  const [te, ma, ea, et, tec] = await Promise.all([
+    sb.from('tipos_equipo').select('*').eq('activo', true).order('orden'),
+    sb.from('marcas').select('*').eq('activo', true).order('orden'),
+    sb.from('estados_admin').select('*').eq('activo', true).order('orden'),
+    sb.from('estados_tecnicos').select('*').eq('activo', true).order('orden'),
+    sb.from('profiles').select('*').eq('role','tecnico').eq('activo', true)
+  ]);
+  STATE.tiposEquipo = te.data || [];
+  STATE.marcas = ma.data || [];
+  STATE.estadosAdmin = ea.data || [];
+  STATE.estadosTecnicos = et.data || [];
+  STATE.tecnicos = tec.data || [];
+}
+
+async function loadOrdenes(){
+  const { data, error } = await sb.from('ordenes')
+    .select(`*, tipo_equipo:tipos_equipo(nombre), marca:marcas(nombre),
+      estado_admin:estados_admin!ordenes_estado_admin_id_fkey(id,nombre,mensaje_whatsapp),
+      estado_tecnico:estados_tecnicos!ordenes_estado_tecnico_id_fkey(id,nombre,mensaje_whatsapp,dispara_estado_admin_id),
+      tecnico:profiles!ordenes_tecnico_id_fkey(full_name)`)
+    .order('numero', { ascending:false });
+  if(error){ console.error(error); STATE.ordenes = []; return; }
+  STATE.ordenes = data;
+}
+
+async function loadProfile(userId){
+  const { data } = await sb.from('profiles').select('*').eq('id', userId).single();
+  STATE.profile = data;
+}
+
+// ---------- RENDER ----------
+
+function render(){
+  if(!STATE.session){ renderLogin(); return; }
+  renderApp();
+}
+
+function renderLogin(){
+  root.innerHTML = `
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;">
+    <div class="card" style="width:320px;">
+      <p style="font-weight:600;font-size:16px;margin:0 0 4px;">Órdenes de servicio</p>
+      <p style="color:var(--text-2);margin:0 0 20px;font-size:13px;">Iniciá sesión para continuar</p>
+      <div class="field"><label>Email</label><input id="li-email" type="email" placeholder="tu@email.com" /></div>
+      <div class="field"><label>Contraseña</label><input id="li-pass" type="password" /></div>
+      <button class="primary" style="width:100%;" onclick="doLogin()">Ingresar</button>
+      <div id="li-err" class="err"></div>
+    </div>
+  </div>`;
+}
+
+async function doLogin(){
+  const email = document.getElementById('li-email').value.trim();
+  const password = document.getElementById('li-pass').value;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ document.getElementById('li-err').textContent = 'No pudimos iniciar sesión. Revisá el email y la contraseña.'; return; }
+  STATE.session = data.session;
+  await loadProfile(data.session.user.id);
+  await loadRefData();
+  await loadOrdenes();
+  render();
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  STATE.session = null; STATE.profile = null;
+  render();
+}
+
+function renderApp(){
+  const role = STATE.profile?.role || 'tecnico';
+  root.innerHTML = `
+    <div class="topbar">
+      <div class="brand"><i class="ti ti-tool"></i> Órdenes de servicio</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="color:var(--text-2);font-size:13px;">${STATE.profile?.full_name || ''} · ${role}</span>
+        <button class="small" onclick="doLogout()">Salir</button>
+      </div>
+    </div>
+    <div id="app"></div>
+  `;
+  const app = document.getElementById('app');
+  const tabs = [['panel','Panel'],['nueva','Nueva orden']];
+  if(role === 'admin') tabs.push(['config','Configuración']);
+  app.innerHTML = `
+    <div class="tabs">
+      ${tabs.map(([k,l]) => `<button class="${STATE.tab===k?'active':''}" onclick="setTab('${k}')">${l}</button>`).join('')}
+    </div>
+    <div id="tabcontent"></div>
+  `;
+  renderTab();
+  if(STATE.openOrder) renderOrderModal(STATE.openOrder);
+}
+
+function setTab(t){ STATE.tab = t; render(); }
+
+function renderTab(){
+  const c = document.getElementById('tabcontent');
+  if(STATE.tab === 'panel') return renderPanel(c);
+  if(STATE.tab === 'nueva') return renderNuevaOrden(c);
+  if(STATE.tab === 'config') return renderConfig(c);
+}
+
+function renderPanel(c){
+  const abiertos = STATE.ordenes.filter(o => (o.estado_admin?.nombre||'') !== 'Entregado').length;
+  const paraInformar = STATE.ordenes.filter(o => (o.estado_admin?.nombre||'').toLowerCase().includes('informar')).length;
+  const enReparacion = STATE.ordenes.filter(o => (o.estado_tecnico?.nombre||'').toLowerCase().includes('reparaci')).length;
+
+  const q = STATE.search.toLowerCase();
+  const list = STATE.ordenes.filter(o =>
+    !q || o.cliente_nombre.toLowerCase().includes(q) || String(o.numero).includes(q)
+  );
+
+  c.innerHTML = `
+    <div class="metrics">
+      <div class="metric"><div class="num">${STATE.ordenes.length}</div><div class="lbl">Total órdenes</div></div>
+      <div class="metric"><div class="num">${abiertos}</div><div class="lbl">Abiertas</div></div>
+      <div class="metric"><div class="num">${paraInformar}</div><div class="lbl">Para informar</div></div>
+      <div class="metric"><div class="num">${enReparacion}</div><div class="lbl">En reparación</div></div>
+    </div>
+    <input placeholder="Buscar por cliente o número" style="margin-bottom:14px;" value="${STATE.search}" oninput="STATE.search=this.value; renderPanel(document.getElementById('tabcontent'))" />
+    <div class="ord-head"><span>#</span><span>Cliente / equipo</span><span>Admin</span><span>Técnico</span><span></span></div>
+    ${list.length === 0 ? `<p style="color:var(--text-2);">No hay órdenes todavía.</p>` : ''}
+    ${list.map(o => `
+      <div class="ord-row" onclick="openOrder('${o.id}')">
+        <span class="ticket-num">#${o.numero}</span>
+        <span>${o.cliente_nombre} — ${o.tipo_equipo?.nombre||''} ${o.marca?.nombre||''}</span>
+        <span class="badge" style="${badgeStyle(o.estado_admin?.nombre)}">${o.estado_admin?.nombre||'—'}</span>
+        <span class="badge" style="${badgeStyle(o.estado_tecnico?.nombre)}">${o.estado_tecnico?.nombre||'—'}</span>
+        <i class="ti ti-chevron-right" style="color:var(--text-muted);"></i>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderNuevaOrden(c){
+  c.innerHTML = `
+    <div class="card" style="max-width:480px;">
+      <p style="font-weight:600;margin:0 0 16px;">Nueva orden</p>
+      <div class="field"><label>Nombre del cliente</label><input id="no-nombre" placeholder="Juan Pérez" /></div>
+      <div class="field"><label>Teléfono</label><input id="no-tel" placeholder="11 2345 6789" /></div>
+      <div class="field"><label>Trabajo</label><input id="no-trabajo" placeholder="No enciende, pantalla rota, etc." /></div>
+      <div class="row field">
+        <div><label>Tipo de equipo</label><select id="no-tipo">${STATE.tiposEquipo.map(t=>`<option value="${t.id}">${t.nombre}</option>`).join('')}</select></div>
+        <div><label>Marca</label><select id="no-marca">${STATE.marcas.map(m=>`<option value="${m.id}">${m.nombre}</option>`).join('')}</select></div>
+      </div>
+      <div class="row field">
+        <div><label>Modelo</label><input id="no-modelo" /></div>
+        <div><label>N.º de serie</label><input id="no-serie" /></div>
+      </div>
+      <div class="field"><label>Accesorios que dejó</label><input id="no-accesorios" /></div>
+      <div class="field"><label>Observaciones</label><textarea id="no-obs" rows="2"></textarea></div>
+      <button class="primary" style="width:100%;" onclick="crearOrden()">Recepcionar equipo</button>
+      <div id="no-err" class="err"></div>
+    </div>
+  `;
+}
+
+async function crearOrden(){
+  const nombre = document.getElementById('no-nombre').value.trim();
+  const tel = document.getElementById('no-tel').value.trim();
+  const trabajo = document.getElementById('no-trabajo').value.trim();
+  if(!nombre || !tel || !trabajo){ document.getElementById('no-err').textContent = 'Completá nombre, teléfono y trabajo.'; return; }
+  const estadoAdminInicial = STATE.estadosAdmin[0]?.id;
+  const estadoTecInicial = STATE.estadosTecnicos[0]?.id;
+  const payload = {
+    cliente_nombre: nombre, cliente_telefono: tel, trabajo,
+    tipo_equipo_id: document.getElementById('no-tipo').value,
+    marca_id: document.getElementById('no-marca').value,
+    modelo: document.getElementById('no-modelo').value || null,
+    numero_serie: document.getElementById('no-serie').value || null,
+    accesorios: document.getElementById('no-accesorios').value || null,
+    observaciones: document.getElementById('no-obs').value || null,
+    estado_admin_id: estadoAdminInicial, estado_tecnico_id: estadoTecInicial,
+    usuario_recepciono_id: STATE.session.user.id
+  };
+  const { data, error } = await sb.from('ordenes').insert(payload).select().single();
+  if(error){ document.getElementById('no-err').textContent = 'No se pudo crear la orden.'; console.error(error); return; }
+  await sb.from('historial_estados').insert([
+    { orden_id: data.id, tipo_flujo:'admin', estado_admin_id: estadoAdminInicial, usuario_id: STATE.session.user.id },
+    { orden_id: data.id, tipo_flujo:'tecnico', estado_tecnico_id: estadoTecInicial, usuario_id: STATE.session.user.id }
+  ]);
+  await loadOrdenes();
+  STATE.tab = 'panel'; STATE.openOrder = data.id;
+  render();
+}
+
+function openOrder(id){ STATE.openOrder = id; render(); }
+function closeOrder(){ STATE.openOrder = null; render(); }
+
+function renderOrderModal(id){
+  const o = STATE.ordenes.find(x => x.id === id);
+  if(!o) return;
+  const role = STATE.profile?.role;
+  const canEditTecnico = role === 'admin' || role === 'tecnico';
+  const canEditAdmin = role === 'admin' || role === 'operador';
+
+  const div = document.createElement('div');
+  div.className = 'modal-bg';
+  div.innerHTML = `
+    <div class="modal">
+      <div style="display:flex;justify-content:space-between;align-items:start;">
+        <div>
+          <p style="font-weight:600;margin:0;" class="ticket-num">Orden #${o.numero}</p>
+          <p style="color:var(--text-2);margin:4px 0 0;font-size:13px;">${o.cliente_nombre} · ${o.cliente_telefono}</p>
+        </div>
+        <button class="small" onclick="closeOrder()"><i class="ti ti-x"></i></button>
+      </div>
+
+      <div class="section-title">Equipo</div>
+      <p style="margin:0;font-size:13px;color:var(--text-2);">
+        ${o.tipo_equipo?.nombre||''} ${o.marca?.nombre||''} ${o.modelo||''} ${o.numero_serie?('· N/S '+o.numero_serie):''}<br/>
+        Trabajo: ${o.trabajo}<br/>
+        ${o.accesorios ? 'Accesorios: '+o.accesorios+'<br/>' : ''}
+        ${o.observaciones ? 'Obs: '+o.observaciones : ''}
+      </p>
+
+      <div class="section-title">Estado administrativo</div>
+      <div class="row" style="align-items:end;">
+        <div>
+          <select id="sel-admin" ${canEditAdmin?'':'disabled'}>
+            ${STATE.estadosAdmin.map(e=>`<option value="${e.id}" ${e.id===o.estado_admin?.id?'selected':''}>${e.nombre}</option>`).join('')}
+          </select>
+        </div>
+        ${canEditAdmin ? `<button onclick="cambiarEstadoAdmin('${o.id}')">Guardar</button>` : ''}
+      </div>
+      ${o.estado_admin?.mensaje_whatsapp ? `
+        <div class="msg-box">${fillTemplate(o.estado_admin.mensaje_whatsapp, o)}</div>
+        <button onclick="enviarWhatsapp('${o.id}')"><i class="ti ti-brand-whatsapp"></i> Abrir WhatsApp con este mensaje</button>
+      ` : ''}
+
+      <div class="section-title">Estado técnico</div>
+      <div class="row" style="align-items:end;">
+        <div>
+          <select id="sel-tecnico-estado" ${canEditTecnico?'':'disabled'}>
+            ${STATE.estadosTecnicos.map(e=>`<option value="${e.id}" ${e.id===o.estado_tecnico?.id?'selected':''}>${e.nombre}</option>`).join('')}
+          </select>
+        </div>
+        ${canEditTecnico ? `<button onclick="cambiarEstadoTecnico('${o.id}')">Guardar</button>` : ''}
+      </div>
+
+      <div class="section-title">Técnico asignado</div>
+      <div class="row" style="align-items:end;">
+        <div>
+          <select id="sel-tecnico" ${canEditAdmin?'':'disabled'}>
+            <option value="">Sin asignar</option>
+            ${STATE.tecnicos.map(t=>`<option value="${t.id}" ${t.id===o.tecnico_id?'selected':''}>${t.full_name}</option>`).join('')}
+          </select>
+        </div>
+        ${canEditAdmin ? `<button onclick="asignarTecnico('${o.id}')">Guardar</button>` : ''}
+      </div>
+
+      <div class="section-title">Presupuesto</div>
+      <div class="row">
+        <div><label>Monto</label><input id="pres-monto" type="number" value="${o.presupuesto_monto ?? ''}" ${canEditAdmin?'':'disabled'} /></div>
+        <div><label>Estado</label>
+          <select id="pres-estado" ${canEditAdmin?'':'disabled'}>
+            <option value="pendiente" ${o.presupuesto_estado==='pendiente'?'selected':''}>Pendiente</option>
+            <option value="aceptado" ${o.presupuesto_estado==='aceptado'?'selected':''}>Aceptado</option>
+            <option value="rechazado" ${o.presupuesto_estado==='rechazado'?'selected':''}>Rechazado</option>
+          </select>
+        </div>
+      </div>
+      ${canEditAdmin ? `<button onclick="guardarPresupuesto('${o.id}')" style="margin-top:8px;">Guardar presupuesto</button>` : ''}
+    </div>
+  `;
+  document.body.appendChild(div);
+  div.id = 'order-modal-bg';
+}
+
+async function cambiarEstadoAdmin(ordenId){
+  const estadoId = document.getElementById('sel-admin').value;
+  await sb.from('ordenes').update({ estado_admin_id: estadoId, updated_at: new Date().toISOString() }).eq('id', ordenId);
+  await sb.from('historial_estados').insert({ orden_id: ordenId, tipo_flujo:'admin', estado_admin_id: estadoId, usuario_id: STATE.session.user.id });
+  await refreshOrderModal(ordenId);
+}
+
+async function cambiarEstadoTecnico(ordenId){
+  const estadoId = document.getElementById('sel-tecnico-estado').value;
+  const estado = STATE.estadosTecnicos.find(e => e.id === estadoId);
+  const updates = { estado_tecnico_id: estadoId, updated_at: new Date().toISOString() };
+  if(estado?.dispara_estado_admin_id) updates.estado_admin_id = estado.dispara_estado_admin_id;
+  await sb.from('ordenes').update(updates).eq('id', ordenId);
+  const inserts = [{ orden_id: ordenId, tipo_flujo:'tecnico', estado_tecnico_id: estadoId, usuario_id: STATE.session.user.id }];
+  if(estado?.dispara_estado_admin_id) inserts.push({ orden_id: ordenId, tipo_flujo:'admin', estado_admin_id: estado.dispara_estado_admin_id, usuario_id: STATE.session.user.id });
+  await sb.from('historial_estados').insert(inserts);
+  await refreshOrderModal(ordenId);
+}
+
+async function asignarTecnico(ordenId){
+  const tecnicoId = document.getElementById('sel-tecnico').value || null;
+  await sb.from('ordenes').update({ tecnico_id: tecnicoId, updated_at: new Date().toISOString() }).eq('id', ordenId);
+  await refreshOrderModal(ordenId);
+}
+
+async function guardarPresupuesto(ordenId){
+  const monto = document.getElementById('pres-monto').value || null;
+  const estado = document.getElementById('pres-estado').value;
+  await sb.from('ordenes').update({ presupuesto_monto: monto, presupuesto_estado: estado, updated_at: new Date().toISOString() }).eq('id', ordenId);
+  await refreshOrderModal(ordenId);
+}
+
+async function enviarWhatsapp(ordenId){
+  const o = STATE.ordenes.find(x => x.id === ordenId);
+  const texto = fillTemplate(o.estado_admin.mensaje_whatsapp, o);
+  await sb.from('mensajes_enviados').insert({ orden_id: ordenId, estado_relacionado: o.estado_admin.nombre, contenido: texto, canal:'whatsapp' });
+  window.open(waLink(o.cliente_telefono, texto), '_blank');
+}
+
+async function refreshOrderModal(ordenId){
+  await loadOrdenes();
+  document.getElementById('order-modal-bg')?.remove();
+  renderOrderModal(ordenId);
+  renderPanel(document.getElementById('tabcontent'));
+}
+
+// ---------- CONFIGURACIÓN ----------
+
+function renderConfig(c){
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <p style="font-weight:600;margin:0 0 10px;">Tipos de equipo</p>
+      <table class="cfg"><tbody id="cfg-tipos"></tbody></table>
+      <div class="row" style="margin-top:10px;">
+        <input id="new-tipo" placeholder="Nuevo tipo de equipo" />
+        <button onclick="agregarSimple('tipos_equipo','new-tipo')" style="flex:0;white-space:nowrap;">Agregar</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <p style="font-weight:600;margin:0 0 10px;">Marcas</p>
+      <table class="cfg"><tbody id="cfg-marcas"></tbody></table>
+      <div class="row" style="margin-top:10px;">
+        <input id="new-marca" placeholder="Nueva marca" />
+        <button onclick="agregarSimple('marcas','new-marca')" style="flex:0;white-space:nowrap;">Agregar</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <p style="font-weight:600;margin:0 0 10px;">Estados administrativos</p>
+      <table class="cfg"><thead><tr><th>Nombre</th><th>Mensaje WhatsApp</th></tr></thead><tbody id="cfg-eadmin"></tbody></table>
+    </div>
+    <div class="card">
+      <p style="font-weight:600;margin:0 0 10px;">Estados técnicos</p>
+      <table class="cfg"><thead><tr><th>Nombre</th><th>Dispara en admin</th></tr></thead><tbody id="cfg-etec"></tbody></table>
+    </div>
+  `;
+  document.getElementById('cfg-tipos').innerHTML = STATE.tiposEquipo.map(t=>`<tr><td>${t.nombre}</td></tr>`).join('');
+  document.getElementById('cfg-marcas').innerHTML = STATE.marcas.map(m=>`<tr><td>${m.nombre}</td></tr>`).join('');
+  document.getElementById('cfg-eadmin').innerHTML = STATE.estadosAdmin.map(e=>`
+    <tr><td>${e.nombre}</td><td><textarea rows="2" style="font-size:12px;" onchange="actualizarMensaje('estados_admin','${e.id}',this.value)">${e.mensaje_whatsapp||''}</textarea></td></tr>
+  `).join('');
+  document.getElementById('cfg-etec').innerHTML = STATE.estadosTecnicos.map(e=>`
+    <tr><td>${e.nombre}</td><td>
+      <select onchange="actualizarDisparo('${e.id}',this.value)">
+        <option value="">Ninguno</option>
+        ${STATE.estadosAdmin.map(a=>`<option value="${a.id}" ${a.id===e.dispara_estado_admin_id?'selected':''}>${a.nombre}</option>`).join('')}
+      </select>
+    </td></tr>
+  `).join('');
+}
+
+async function agregarSimple(tabla, inputId){
+  const val = document.getElementById(inputId).value.trim();
+  if(!val) return;
+  await sb.from(tabla).insert({ nombre: val });
+  await loadRefData();
+  document.getElementById(inputId).value = '';
+  renderConfig(document.getElementById('tabcontent'));
+}
+
+async function actualizarMensaje(tabla, id, valor){
+  await sb.from(tabla).update({ mensaje_whatsapp: valor }).eq('id', id);
+  await loadRefData();
+}
+
+async function actualizarDisparo(estadoTecId, estadoAdminId){
+  await sb.from('estados_tecnicos').update({ dispara_estado_admin_id: estadoAdminId || null }).eq('id', estadoTecId);
+  await loadRefData();
+}
+
+// ---------- INIT ----------
+
+(async function init(){
+  const { data } = await sb.auth.getSession();
+  if(data.session){
+    STATE.session = data.session;
+    await loadProfile(data.session.user.id);
+    await loadRefData();
+    await loadOrdenes();
+  }
+  render();
+})();
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2/dist/tabler-icons.min.css">
+</body>
 </html>
