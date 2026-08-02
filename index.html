@@ -93,6 +93,22 @@
   .tabs{display:flex;gap:20px;margin-bottom:18px;border-bottom:1px solid var(--border);}
   .tabs button{border:none;background:none;border-radius:0;padding:0 0 10px;color:var(--text-2);font-weight:500;}
   .tabs button.active{color:var(--text);border-bottom:2px solid var(--accent);}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow:auto;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;max-width:520px;width:100%;padding:22px 24px;max-height:88vh;overflow:auto;}
+
+  .nav-sub{display:flex;align-items:center;gap:8px;padding:7px 10px 7px 34px;border-radius:var(--radius);color:var(--text-2);font-size:13px;font-weight:500;cursor:pointer;margin-bottom:1px;}
+  .nav-sub:hover{background:var(--surface-2);color:var(--text);}
+  .nav-sub.active{background:var(--accent-bg);color:var(--accent-text);}
+  .nav-caret{transition:transform .15s;}
+  .nav-caret.open{transform:rotate(90deg);}
+
+  .grid-head{display:grid;gap:10px;padding:0 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .grid-row{display:grid;gap:10px;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;}
+  .grid-row input, .grid-row textarea, .grid-row select{background:transparent;border:1px solid transparent;padding:6px 8px;}
+  .grid-row input:hover, .grid-row textarea:hover, .grid-row select:hover{border-color:var(--border-strong);}
+  .grid-row input:focus, .grid-row textarea:focus, .grid-row select:focus{background:var(--surface-2);border-color:var(--accent);}
+  .toggle-badge{border:1px solid transparent;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -116,7 +132,9 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let STATE = {
   session: null, profile: null,
   tiposEquipo: [], marcas: [], estadosAdmin: [], estadosTecnicos: [], tecnicos: [],
-  ordenes: [], view: 'panel', detailOrderId: null, search: '', historial: []
+  ordenes: [], view: 'panel', detailOrderId: null, search: '', historial: [],
+  configOpen: true, showNewOrder: false,
+  cfgTipos: [], cfgMarcas: [], cfgEstadosAdmin: [], cfgEstadosTecnicos: []
 };
 
 const root = document.getElementById('root');
@@ -174,6 +192,19 @@ async function loadOrdenes(){
   STATE.ordenes = data;
 }
 
+async function loadCfgAll(){
+  const [te, ma, ea, et] = await Promise.all([
+    sb.from('tipos_equipo').select('*').order('orden'),
+    sb.from('marcas').select('*').order('orden'),
+    sb.from('estados_admin').select('*').order('orden'),
+    sb.from('estados_tecnicos').select('*').order('orden'),
+  ]);
+  STATE.cfgTipos = te.data || [];
+  STATE.cfgMarcas = ma.data || [];
+  STATE.cfgEstadosAdmin = ea.data || [];
+  STATE.cfgEstadosTecnicos = et.data || [];
+}
+
 async function loadHistorial(ordenId){
   const { data, error } = await sb.from('historial_estados')
     .select(`*, estado_admin:estados_admin(nombre), estado_tecnico:estados_tecnicos(nombre), usuario:profiles(full_name)`)
@@ -227,21 +258,33 @@ async function doLogout(){
   render();
 }
 
+const CONFIG_CHILDREN = [
+  ['cfg-tipos', 'Tipos de equipo'],
+  ['cfg-marcas', 'Marcas'],
+  ['cfg-eadmin', 'Estados administrativos'],
+  ['cfg-etec', 'Estados técnicos'],
+];
+
 function renderShell(){
   const role = STATE.profile?.role || 'tecnico';
-  const navItems = [
-    ['panel', 'Panel', ICONS.panel],
-    ['nueva', 'Nueva orden', ICONS.plus],
-  ];
-  if(role === 'admin') navItems.push(['config', 'Configuración', ICONS.settings]);
+  const isAdmin = role === 'admin';
+  const inConfig = STATE.view.startsWith('cfg-');
 
   root.innerHTML = `
     <div id="shell">
       <div id="sidebar">
         <div class="brand"><span class="dot"></span>ReWop</div>
-        ${navItems.map(([k,l,icon]) => `
-          <div class="nav-item ${STATE.view===k?'active':''}" onclick="setView('${k}')">${icon}<span>${l}</span></div>
-        `).join('')}
+        <div class="nav-item ${STATE.view==='panel'?'active':''}" onclick="setView('panel')">${ICONS.panel}<span>Panel</span></div>
+        <div class="nav-item ${STATE.view==='ordenes'?'active':''}" onclick="setView('ordenes')">${ICONS.plus}<span>Órdenes de servicio</span></div>
+        ${isAdmin ? `
+          <div class="nav-item ${inConfig?'active':''}" onclick="toggleConfigTree()">
+            ${ICONS.settings}<span>Configuración</span>
+            <span class="nav-caret ${STATE.configOpen?'open':''}" style="margin-left:auto;">${ICONS.chevronRight}</span>
+          </div>
+          ${STATE.configOpen ? CONFIG_CHILDREN.map(([k,l]) => `
+            <div class="nav-sub ${STATE.view===k?'active':''}" onclick="setView('${k}')"><span>${l}</span></div>
+          `).join('') : ''}
+        ` : ''}
         <div class="sidebar-footer">
           <div class="sidebar-user">
             <div class="name">${STATE.profile?.full_name || ''}</div>
@@ -254,11 +297,21 @@ function renderShell(){
     </div>
   `;
   renderView();
+  if(STATE.showNewOrder) renderNewOrderModal();
+}
+
+function toggleConfigTree(){
+  STATE.configOpen = !STATE.configOpen;
+  render();
 }
 
 function setView(v, orderId){
   STATE.view = v;
   STATE.detailOrderId = orderId || null;
+  if(v.startsWith('cfg-')){
+    loadCfgAll().then(() => render());
+    return;
+  }
   render();
   if(v === 'detail' && orderId) loadHistorial(orderId).then(() => renderView());
 }
@@ -266,20 +319,18 @@ function setView(v, orderId){
 function renderView(){
   const m = document.getElementById('main');
   if(STATE.view === 'panel') return renderPanel(m);
-  if(STATE.view === 'nueva') return renderNuevaOrden(m);
-  if(STATE.view === 'config') return renderConfig(m);
+  if(STATE.view === 'ordenes') return renderOrdenes(m);
   if(STATE.view === 'detail') return renderDetail(m);
+  if(STATE.view === 'cfg-tipos') return renderCfgSimple(m, 'tipos_equipo', STATE.cfgTipos, 'Tipos de equipo');
+  if(STATE.view === 'cfg-marcas') return renderCfgSimple(m, 'marcas', STATE.cfgMarcas, 'Marcas');
+  if(STATE.view === 'cfg-eadmin') return renderCfgEstadosAdmin(m);
+  if(STATE.view === 'cfg-etec') return renderCfgEstadosTecnicos(m);
 }
 
 function renderPanel(c){
   const abiertos = STATE.ordenes.filter(o => (o.estado_admin?.nombre||'') !== 'Entregado').length;
   const paraInformar = STATE.ordenes.filter(o => (o.estado_admin?.nombre||'').toLowerCase().includes('informar')).length;
   const enReparacion = STATE.ordenes.filter(o => (o.estado_tecnico?.nombre||'').toLowerCase().includes('reparaci')).length;
-
-  const q = STATE.search.toLowerCase();
-  const list = STATE.ordenes.filter(o =>
-    !q || o.cliente_nombre.toLowerCase().includes(q) || String(o.numero).includes(q)
-  );
 
   c.innerHTML = `
     <h1 class="page-title">Panel</h1>
@@ -290,7 +341,23 @@ function renderPanel(c){
       <div class="metric"><div class="num">${paraInformar}</div><div class="lbl">Para informar</div></div>
       <div class="metric"><div class="num">${enReparacion}</div><div class="lbl">En reparación</div></div>
     </div>
-    <input id="search-input" placeholder="Buscar por cliente o número" style="margin-bottom:14px;max-width:320px;" value="${STATE.search}" />
+    <button class="primary" onclick="setView('ordenes')">Ver órdenes de servicio</button>
+  `;
+}
+
+function renderOrdenes(c){
+  const q = STATE.search.toLowerCase();
+  const list = STATE.ordenes.filter(o =>
+    !q || o.cliente_nombre.toLowerCase().includes(q) || String(o.numero).includes(q)
+  );
+
+  c.innerHTML = `
+    <h1 class="page-title">Órdenes de servicio</h1>
+    <p class="page-sub">Listado completo de órdenes</p>
+    <div class="row" style="margin-bottom:14px;align-items:center;">
+      <input id="search-input" placeholder="Buscar por cliente o número" style="max-width:320px;" value="${STATE.search}" />
+      <button class="primary" style="flex:0;white-space:nowrap;" onclick="openNewOrderModal()">${ICONS.plus} Nueva orden</button>
+    </div>
     <div class="ord-head"><span>#</span><span>Cliente / equipo</span><span>Admin</span><span>Técnico</span><span></span></div>
     ${list.length === 0 ? `<p style="color:var(--text-2);">No hay órdenes todavía.</p>` : ''}
     ${list.map(o => `
@@ -304,14 +371,31 @@ function renderPanel(c){
     `).join('')}
   `;
   const si = document.getElementById('search-input');
-  si.addEventListener('input', () => { STATE.search = si.value; renderPanel(c); si.focus(); si.setSelectionRange(si.value.length, si.value.length); });
+  si.addEventListener('input', () => { STATE.search = si.value; renderOrdenes(c); si.focus(); si.setSelectionRange(si.value.length, si.value.length); });
 }
 
-function renderNuevaOrden(c){
-  c.innerHTML = `
-    <h1 class="page-title">Nueva orden</h1>
-    <p class="page-sub">Recepción de un equipo</p>
-    <div class="card" style="max-width:480px;">
+function openNewOrderModal(){
+  STATE.showNewOrder = true;
+  renderNewOrderModal();
+}
+
+function closeNewOrderModal(){
+  STATE.showNewOrder = false;
+  document.getElementById('new-order-modal-bg')?.remove();
+}
+
+function renderNewOrderModal(){
+  document.getElementById('new-order-modal-bg')?.remove();
+  const div = document.createElement('div');
+  div.className = 'modal-bg';
+  div.id = 'new-order-modal-bg';
+  div.innerHTML = `
+    <div class="modal">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:4px;">
+        <p style="font-weight:600;margin:0;">Nueva orden</p>
+        <button class="ghost small" onclick="closeNewOrderModal()">✕</button>
+      </div>
+      <p style="color:var(--text-2);font-size:13px;margin:0 0 16px;">Recepción de un equipo</p>
       <div class="field"><label>Nombre del cliente</label><input id="no-nombre" placeholder="Juan Pérez" /></div>
       <div class="field"><label>Teléfono</label><input id="no-tel" placeholder="11 2345 6789" /></div>
       <div class="field"><label>Trabajo</label><input id="no-trabajo" placeholder="No enciende, pantalla rota, etc." /></div>
@@ -325,10 +409,11 @@ function renderNuevaOrden(c){
       </div>
       <div class="field"><label>Accesorios que dejó</label><input id="no-accesorios" /></div>
       <div class="field"><label>Observaciones</label><textarea id="no-obs" rows="2"></textarea></div>
-      <button class="primary" style="width:100%;" onclick="crearOrden()">Recepcionar equipo</button>
+      <button class="primary" style="width:100%;" onclick="crearOrden()">Guardar</button>
       <div id="no-err" class="err"></div>
     </div>
   `;
+  document.body.appendChild(div);
 }
 
 async function crearOrden(){
@@ -352,11 +437,12 @@ async function crearOrden(){
   const { data, error } = await sb.from('ordenes').insert(payload).select().single();
   if(error){ document.getElementById('no-err').textContent = 'No se pudo crear la orden.'; console.error(error); return; }
   await sb.from('historial_estados').insert([
-    { orden_id: data.id, tipo_flujo:'admin', estado_admin_id: estadoAdminInitial, usuario_id: STATE.session.user.id },
+    { orden_id: data.id, tipo_flujo:'admin', estado_admin_id: estadoAdminInicial, usuario_id: STATE.session.user.id },
     { orden_id: data.id, tipo_flujo:'tecnico', estado_tecnico_id: estadoTecInicial, usuario_id: STATE.session.user.id }
   ]);
   await loadOrdenes();
-  setView('detail', data.id);
+  closeNewOrderModal();
+  setView('ordenes');
 }
 
 function renderDetail(c){
@@ -379,7 +465,7 @@ function renderDetail(c){
   }
 
   c.innerHTML = `
-    <div class="back-link" onclick="setView('panel')">${ICONS.chevronLeft}<span>Volver al panel</span></div>
+    <div class="back-link" onclick="setView('ordenes')">${ICONS.chevronLeft}<span>Volver a órdenes</span></div>
     <h1 class="page-title ticket-num">Orden #${o.numero}</h1>
     <p class="page-sub">${o.cliente_nombre} · ${o.cliente_telefono}</p>
 
@@ -500,68 +586,99 @@ async function enviarWhatsapp(ordenId){
 }
 
 // ---------- CONFIGURACIÓN ----------
+// Nota: estas tablas están referenciadas por "ordenes" (FK), así que nunca se borran:
+// solo se pueden activar/desactivar. Un registro inactivo deja de aparecer en los
+// desplegables de carga, pero las órdenes existentes que ya lo usan no se ven afectadas.
 
-function renderConfig(c){
+function activoBadge(activo){
+  return activo
+    ? `background:var(--accent-bg);color:var(--accent-text);`
+    : `background:var(--neutral-bg);color:var(--neutral-text);`;
+}
+
+function renderCfgSimple(c, tabla, rows, titulo){
   c.innerHTML = `
-    <h1 class="page-title">Configuración</h1>
-    <p class="page-sub">Tablas editables de la app</p>
-    <div class="card" style="margin-bottom:16px;">
-      <div class="section-title">Tipos de equipo</div>
-      <table class="cfg"><tbody id="cfg-tipos"></tbody></table>
-      <div class="row" style="margin-top:10px;">
-        <input id="new-tipo" placeholder="Nuevo tipo de equipo" />
-        <button onclick="agregarSimple('tipos_equipo','new-tipo')" style="flex:0;white-space:nowrap;">Agregar</button>
+    <h1 class="page-title">${titulo}</h1>
+    <p class="page-sub">No se pueden eliminar porque están vinculados a órdenes existentes — se activan o desactivan.</p>
+    <div class="grid-head" style="grid-template-columns:1fr 110px 130px;"><span>Nombre</span><span>Estado</span><span></span></div>
+    ${rows.map(r => `
+      <div class="grid-row" style="grid-template-columns:1fr 110px 130px;">
+        <input value="${r.nombre.replace(/"/g,'&quot;')}" onchange="actualizarCampo('${tabla}','${r.id}','nombre',this.value)" />
+        <span class="badge" style="${activoBadge(r.activo)}">${r.activo ? 'Activo' : 'Inactivo'}</span>
+        <button class="small toggle-badge" onclick="toggleActivo('${tabla}','${r.id}',${r.activo})">${r.activo ? 'Desactivar' : 'Activar'}</button>
       </div>
-    </div>
-    <div class="card" style="margin-bottom:16px;">
-      <div class="section-title">Marcas</div>
-      <table class="cfg"><tbody id="cfg-marcas"></tbody></table>
-      <div class="row" style="margin-top:10px;">
-        <input id="new-marca" placeholder="Nueva marca" />
-        <button onclick="agregarSimple('marcas','new-marca')" style="flex:0;white-space:nowrap;">Agregar</button>
-      </div>
-    </div>
-    <div class="card" style="margin-bottom:16px;">
-      <div class="section-title">Estados administrativos</div>
-      <table class="cfg"><thead><tr><th>Nombre</th><th>Mensaje WhatsApp</th></tr></thead><tbody id="cfg-eadmin"></tbody></table>
-    </div>
-    <div class="card">
-      <div class="section-title">Estados técnicos</div>
-      <table class="cfg"><thead><tr><th>Nombre</th><th>Dispara en admin</th></tr></thead><tbody id="cfg-etec"></tbody></table>
+    `).join('')}
+    <div class="grid-row" style="grid-template-columns:1fr 130px;margin-top:12px;background:none;border-style:dashed;">
+      <input id="new-cfg-nombre" placeholder="Nombre nuevo" />
+      <button class="primary" onclick="agregarSimple('${tabla}')">${ICONS.plus} Agregar</button>
     </div>
   `;
-  document.getElementById('cfg-tipos').innerHTML = STATE.tiposEquipo.map(t=>`<tr><td>${t.nombre}</td></tr>`).join('');
-  document.getElementById('cfg-marcas').innerHTML = STATE.marcas.map(m=>`<tr><td>${m.nombre}</td></tr>`).join('');
-  document.getElementById('cfg-eadmin').innerHTML = STATE.estadosAdmin.map(e=>`
-    <tr><td style="white-space:nowrap;">${e.nombre}</td><td><textarea rows="2" style="font-size:12px;" onchange="actualizarMensaje('estados_admin','${e.id}',this.value)">${e.mensaje_whatsapp||''}</textarea></td></tr>
-  `).join('');
-  document.getElementById('cfg-etec').innerHTML = STATE.estadosTecnicos.map(e=>`
-    <tr><td style="white-space:nowrap;">${e.nombre}</td><td>
-      <select onchange="actualizarDisparo('${e.id}',this.value)">
-        <option value="">Ninguno</option>
-        ${STATE.estadosAdmin.map(a=>`<option value="${a.id}" ${a.id===e.dispara_estado_admin_id?'selected':''}>${a.nombre}</option>`).join('')}
-      </select>
-    </td></tr>
-  `).join('');
 }
 
-async function agregarSimple(tabla, inputId){
-  const val = document.getElementById(inputId).value.trim();
+function renderCfgEstadosAdmin(c){
+  c.innerHTML = `
+    <h1 class="page-title">Estados administrativos</h1>
+    <p class="page-sub">Definen el flujo administrativo y el mensaje de WhatsApp que se arma para cada uno.</p>
+    <div class="grid-head" style="grid-template-columns:160px 1fr 110px 130px;"><span>Nombre</span><span>Mensaje WhatsApp</span><span>Estado</span><span></span></div>
+    ${STATE.cfgEstadosAdmin.map(e => `
+      <div class="grid-row" style="grid-template-columns:160px 1fr 110px 130px;align-items:start;">
+        <input value="${e.nombre.replace(/"/g,'&quot;')}" onchange="actualizarCampo('estados_admin','${e.id}','nombre',this.value)" />
+        <textarea rows="2" style="font-size:12px;" onchange="actualizarCampo('estados_admin','${e.id}','mensaje_whatsapp',this.value)">${e.mensaje_whatsapp||''}</textarea>
+        <span class="badge" style="${activoBadge(e.activo)}">${e.activo ? 'Activo' : 'Inactivo'}</span>
+        <button class="small toggle-badge" onclick="toggleActivo('estados_admin','${e.id}',${e.activo})">${e.activo ? 'Desactivar' : 'Activar'}</button>
+      </div>
+    `).join('')}
+    <div class="grid-row" style="grid-template-columns:1fr 130px;margin-top:12px;background:none;border-style:dashed;">
+      <input id="new-cfg-nombre" placeholder="Nombre del nuevo estado" />
+      <button class="primary" onclick="agregarSimple('estados_admin')">${ICONS.plus} Agregar</button>
+    </div>
+  `;
+}
+
+function renderCfgEstadosTecnicos(c){
+  c.innerHTML = `
+    <h1 class="page-title">Estados técnicos</h1>
+    <p class="page-sub">Podés hacer que un estado técnico dispare automáticamente un estado administrativo.</p>
+    <div class="grid-head" style="grid-template-columns:160px 1fr 110px 130px;"><span>Nombre</span><span>Dispara en admin</span><span>Estado</span><span></span></div>
+    ${STATE.cfgEstadosTecnicos.map(e => `
+      <div class="grid-row" style="grid-template-columns:160px 1fr 110px 130px;">
+        <input value="${e.nombre.replace(/"/g,'&quot;')}" onchange="actualizarCampo('estados_tecnicos','${e.id}','nombre',this.value)" />
+        <select onchange="actualizarCampo('estados_tecnicos','${e.id}','dispara_estado_admin_id',this.value || null)">
+          <option value="">Ninguno</option>
+          ${STATE.cfgEstadosAdmin.map(a=>`<option value="${a.id}" ${a.id===e.dispara_estado_admin_id?'selected':''}>${a.nombre}</option>`).join('')}
+        </select>
+        <span class="badge" style="${activoBadge(e.activo)}">${e.activo ? 'Activo' : 'Inactivo'}</span>
+        <button class="small toggle-badge" onclick="toggleActivo('estados_tecnicos','${e.id}',${e.activo})">${e.activo ? 'Desactivar' : 'Activar'}</button>
+      </div>
+    `).join('')}
+    <div class="grid-row" style="grid-template-columns:1fr 130px;margin-top:12px;background:none;border-style:dashed;">
+      <input id="new-cfg-nombre" placeholder="Nombre del nuevo estado" />
+      <button class="primary" onclick="agregarSimple('estados_tecnicos')">${ICONS.plus} Agregar</button>
+    </div>
+  `;
+}
+
+async function agregarSimple(tabla){
+  const input = document.getElementById('new-cfg-nombre');
+  const val = input.value.trim();
   if(!val) return;
   await sb.from(tabla).insert({ nombre: val });
+  await loadCfgAll();
   await loadRefData();
-  document.getElementById(inputId).value = '';
-  renderConfig(document.getElementById('main'));
+  render();
 }
 
-async function actualizarMensaje(tabla, id, valor){
-  await sb.from(tabla).update({ mensaje_whatsapp: valor }).eq('id', id);
+async function actualizarCampo(tabla, id, campo, valor){
+  await sb.from(tabla).update({ [campo]: valor }).eq('id', id);
+  await loadCfgAll();
   await loadRefData();
 }
 
-async function actualizarDisparo(estadoTecId, estadoAdminId){
-  await sb.from('estados_tecnicos').update({ dispara_estado_admin_id: estadoAdminId || null }).eq('id', estadoTecId);
+async function toggleActivo(tabla, id, activoActual){
+  await sb.from(tabla).update({ activo: !activoActual }).eq('id', id);
+  await loadCfgAll();
   await loadRefData();
+  render();
 }
 
 // ---------- INIT ----------
