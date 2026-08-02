@@ -1,286 +1,275 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>ReWop</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          border: 'hsl(var(--border))',
+          input: 'hsl(var(--input))',
+          ring: 'hsl(var(--ring))',
+          background: 'hsl(var(--background))',
+          foreground: 'hsl(var(--foreground))',
+          primary: { DEFAULT: 'hsl(var(--primary))', foreground: 'hsl(var(--primary-foreground))' },
+          secondary: { DEFAULT: 'hsl(var(--secondary))', foreground: 'hsl(var(--secondary-foreground))' },
+          destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--destructive-foreground))' },
+          muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
+          accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(var(--accent-foreground))' },
+          popover: { DEFAULT: 'hsl(var(--popover))', foreground: 'hsl(var(--popover-foreground))' },
+          card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
+          success: { DEFAULT: 'hsl(var(--success))', foreground: 'hsl(var(--success-foreground))' },
+          warning: { DEFAULT: 'hsl(var(--warning))', foreground: 'hsl(var(--warning-foreground))' },
+        },
+        borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+        fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['"IBM Plex Mono"', 'monospace'] },
+      },
+    },
+  };
+</script>
 <style>
-  :root{
-    --bg:#171717; --sidebar-bg:#121212; --surface:#1e1e1e; --surface-2:#262626; --surface-hover:#2a2a2a;
-    --border:#2c2c2c; --border-strong:#3a3a3a;
-    --text:#ededed; --text-2:#a0a0a0; --text-muted:#6b6b6b;
-    --accent:#3ecf8e; --accent-text:#3ecf8e; --accent-bg:rgba(62,207,142,.12); --on-accent:#0b1f16;
-    --danger:#f56565; --danger-bg:rgba(245,101,101,.12);
-    --warning:#f0b429; --warning-bg:rgba(240,180,41,.12);
-    --neutral-bg:#333333; --neutral-text:#b0b0b0;
-    --radius:8px;
+  :root, .dark {
+    --background: 0 0% 9%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 152 55% 53%;
+    --primary-foreground: 152 60% 10%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 63%;
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 93%;
+    --destructive: 0 63% 42%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 152 55% 53%;
+    --success-foreground: 152 60% 10%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 10%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 152 55% 53%;
+    --radius: 0.5rem;
+    --sidebar: 0 0% 7%;
   }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;}
-  input,select,textarea,button{font-family:inherit;font-size:14px;}
-  input,select,textarea{
-    width:100%;padding:8px 10px;border:1px solid var(--border-strong);border-radius:var(--radius);
-    background:var(--surface-2);color:var(--text);
-  }
-  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;}
-  button{
-    padding:8px 14px;border-radius:var(--radius);border:1px solid var(--border-strong);
-    background:var(--surface-2);color:var(--text);cursor:pointer;font-weight:500;
-  }
-  button:hover{background:var(--surface-hover);}
-  button:disabled{opacity:.4;cursor:not-allowed;}
-  button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600;}
-  button.primary:hover{filter:brightness(1.08);}
-  button.ghost{background:none;border:none;color:var(--text-2);}
-  button.ghost:hover{color:var(--text);background:var(--surface-2);}
-  button.small{padding:5px 10px;font-size:12px;}
-  label{display:block;font-size:12px;color:var(--text-2);margin-bottom:4px;}
-  .field{margin-bottom:12px;}
-  .ticket-num{font-family:'IBM Plex Mono',monospace;font-weight:500;}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
-  .badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:500;white-space:nowrap;}
-  .row{display:flex;gap:12px;}
-  .row > *{flex:1;}
-  a{color:var(--accent-text);text-decoration:none;}
-  svg.icon{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;}
-
-  #shell{display:flex;min-height:100vh;}
-  #sidebar{width:220px;flex-shrink:0;background:var(--sidebar-bg);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 12px;}
-  .brand{display:flex;align-items:center;gap:8px;padding:8px 8px 20px;font-weight:700;font-size:16px;letter-spacing:-.01em;}
-  .brand .dot{width:10px;height:10px;border-radius:3px;background:var(--accent);}
-  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius);color:var(--text-2);font-weight:500;cursor:pointer;margin-bottom:2px;}
-  .nav-item:hover{background:var(--surface-2);color:var(--text);}
-  .nav-item.active{background:var(--accent-bg);color:var(--accent-text);}
-  .sidebar-footer{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);}
-  .sidebar-user{padding:8px;font-size:12px;color:var(--text-2);}
-  .sidebar-user .name{color:var(--text);font-weight:500;font-size:13px;}
-
-  #main{flex:1;padding:28px 32px;}
-  h1.page-title{font-size:20px;font-weight:700;margin:0 0 4px;}
-  p.page-sub{color:var(--text-2);margin:0 0 22px;font-size:13px;}
-
-  .metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
-  .metric .num{font-size:22px;font-weight:700;}
-  .metric .lbl{font-size:12px;color:var(--text-2);}
-  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px;}
-
-  .toolbar{display:flex;gap:12px;margin-bottom:14px;align-items:center;}
-  .toolbar input{flex:1;}
-  .toolbar button{flex:0 0 auto;white-space:nowrap;}
-
-  .ord-row{display:grid;grid-template-columns:56px 1fr 150px 150px 20px;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;margin-bottom:8px;}
-  .ord-row:hover{border-color:var(--border-strong);background:var(--surface-hover);}
-  .ord-head{display:grid;grid-template-columns:56px 1fr 150px 150px 20px;gap:10px;padding:0 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
-
-  .back-link{display:flex;align-items:center;gap:6px;color:var(--text-2);font-size:13px;margin-bottom:14px;cursor:pointer;width:fit-content;}
-  .back-link:hover{color:var(--text);}
-
-  .detail-grid{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;}
-  @media (max-width:800px){ .detail-grid{grid-template-columns:1fr;} }
-
-  .section-title{font-weight:600;font-size:13px;margin:0 0 12px;color:var(--text-2);text-transform:uppercase;letter-spacing:.03em;}
-  .msg-box{background:var(--surface-2);border-radius:var(--radius);padding:10px 12px;font-size:13px;white-space:pre-wrap;margin:10px 0;border:1px solid var(--border);}
-
-  .timeline{position:relative;padding-left:22px;}
-  .timeline::before{content:'';position:absolute;left:5px;top:4px;bottom:4px;width:1px;background:var(--border-strong);}
-  .tl-item{position:relative;padding-bottom:18px;}
-  .tl-item::before{content:'';position:absolute;left:-22px;top:3px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);}
-  .tl-item .tl-title{font-weight:500;font-size:13px;}
-  .tl-item .tl-meta{font-size:12px;color:var(--text-muted);margin-top:2px;}
-
-  .err{color:var(--danger);font-size:13px;margin-top:8px;}
-
-  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow:auto;}
-  .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;max-width:520px;width:100%;padding:22px 24px;max-height:88vh;overflow:auto;}
-
-  .nav-sub{display:flex;align-items:center;gap:8px;padding:7px 10px 7px 34px;border-radius:var(--radius);color:var(--text-2);font-size:13px;font-weight:500;cursor:pointer;margin-bottom:1px;}
-  .nav-sub:hover{background:var(--surface-2);color:var(--text);}
-  .nav-sub.active{background:var(--accent-bg);color:var(--accent-text);}
-  .nav-caret{transition:transform .15s;}
-  .nav-caret.open{transform:rotate(90deg);}
-
-  .grid-head{display:grid;gap:10px;padding:0 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
-  .grid-row{display:grid;gap:10px;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;}
-  .grid-row input, .grid-row textarea, .grid-row select{background:transparent;border:1px solid transparent;padding:6px 8px;}
-  .grid-row input:hover, .grid-row textarea:hover, .grid-row select:hover{border-color:var(--border-strong);}
-  .grid-row input:focus, .grid-row textarea:focus, .grid-row select:focus{background:var(--surface-2);border-color:var(--accent);}
-  .toggle-badge{border:1px solid transparent;cursor:pointer;}
-
-  .pagination{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px;color:var(--text-2);font-size:13px;}
+  body{ font-feature-settings: "cv11"; }
+  ::selection{ background: hsl(var(--primary) / .3); }
 </style>
 </head>
-<body>
+<body class="bg-background text-foreground font-sans antialiased">
 <div id="root"></div>
 
-<script>
-const ICONS = {
-  panel: `<svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
-  plus: `<svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
-  settings: `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
-  chevronRight: `<svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>`,
-  chevronLeft: `<svg class="icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>`,
-  message: `<svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`,
-  logout: `<svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
-};
+<script type="module">
+import React from 'https://esm.sh/react@18.3.1';
+import { createRoot } from 'https://esm.sh/react-dom@18.3.1/client';
+import htm from 'https://esm.sh/htm@3.1.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
-const PAGE_SIZE = 20;
+const html = htm.bind(React.createElement);
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
 const SUPABASE_URL = "https://fdxvtrcnfwsdnyvmwbdz.supabase.co";
 const SUPABASE_KEY = "sb_publishable_vVPfjrBumzXiUZcvedL_mw__x1zMA3z";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+const PAGE_SIZE = 20;
 
-let STATE = {
-  session: null, profile: null,
-  tiposEquipo: [], marcas: [], estadosAdmin: [], estadosTecnicos: [], tecnicos: [],
-  ordenes: [], view: 'panel', detailOrderId: null, search: '', ordersPage: 1, historial: [],
-  configOpen: true, showNewOrder: false,
-  cfgTipos: [], cfgMarcas: [], cfgEstadosAdmin: [], cfgEstadosTecnicos: [], cfgSearch: '', cfgPage: 1
-};
+function cn(...args){ return args.filter(Boolean).join(' '); }
 
-const root = document.getElementById('root');
+// ---------- shadcn-style primitives ----------
 
-function badgeStyle(nombre){
-  const n = (nombre||'').toLowerCase();
-  if(n.includes('no aceptad') || n.includes('rechaz')) return 'background:var(--danger-bg);color:var(--danger);';
-  if(n.includes('entregad') || n.includes('terminado') || n.includes('aceptad')) return 'background:var(--accent-bg);color:var(--accent-text);';
-  if(n.includes('esperando') || n.includes('deposito') || n.includes('depósito') || n.includes('informar')) return 'background:var(--warning-bg);color:var(--warning);';
-  if(n.includes('recepcion')) return 'background:var(--neutral-bg);color:var(--neutral-text);';
-  return 'background:var(--accent-bg);color:var(--accent-text);';
+function Button({ variant='default', size='default', className='', children, ...props }){
+  const base = 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
+  const variants = {
+    default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+    secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    outline: 'border border-input bg-transparent hover:bg-accent hover:text-accent-foreground',
+    ghost: 'hover:bg-accent hover:text-accent-foreground',
+    destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+  };
+  const sizes = { default: 'h-9 px-4 py-2', sm: 'h-8 px-3 text-xs', icon: 'h-8 w-8' };
+  return html`<button class=${cn(base, variants[variant], sizes[size], className)} ...${props}>${children}</button>`;
 }
 
-function fillTemplate(tpl, orden){
-  if(!tpl) return '';
-  return tpl
-    .replaceAll('{cliente_nombre}', orden.cliente_nombre || '')
-    .replaceAll('{numero}', orden.numero || '')
-    .replaceAll('{presupuesto_monto}', orden.presupuesto_monto ?? '');
+function Input({ className='', ...props }){
+  return html`<input class=${cn('flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50', className)} ...${props} />`;
 }
 
-function waLink(telefono, texto){
-  let digits = (telefono||'').replace(/\D/g,'');
-  return `https://wa.me/${digits}?text=${encodeURIComponent(texto)}`;
+function Textarea({ className='', ...props }){
+  return html`<textarea class=${cn('flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50', className)} ...${props} />`;
 }
 
-function fmtFecha(iso){
-  const d = new Date(iso);
-  return d.toLocaleDateString('es-AR', { day:'2-digit', month:'short' }) + ' ' + d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+function Select({ className='', children, ...props }){
+  return html`<select class=${cn('flex h-9 w-full items-center rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50', className)} ...${props}>${children}</select>`;
 }
 
-function matchesOrderSearch(o, q){
-  if(!q) return true;
-  const hay = [
-    o.cliente_nombre, o.cliente_telefono, o.trabajo, o.modelo, o.numero_serie,
-    o.tipo_equipo?.nombre, o.marca?.nombre, o.estado_admin?.nombre, o.estado_tecnico?.nombre,
-    o.accesorios, o.observaciones, o.tecnico?.full_name, String(o.numero)
-  ].filter(Boolean).join(' ').toLowerCase();
-  return hay.includes(q);
+function Label({ className='', children, ...props }){
+  return html`<label class=${cn('text-xs font-medium text-muted-foreground mb-1.5 block', className)} ...${props}>${children}</label>`;
 }
 
-function paginationHtml(page, totalItems, onPrev, onNext){
-  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-  return `
-    <div class="pagination">
-      <button class="small" ${page<=1?'disabled':''} onclick="${onPrev}">${ICONS.chevronLeft} Anterior</button>
-      <span>Página ${page} de ${totalPages}</span>
-      <button class="small" ${page>=totalPages?'disabled':''} onclick="${onNext}">Siguiente ${ICONS.chevronRight}</button>
+function Card({ className='', children, ...props }){
+  return html`<div class=${cn('rounded-lg border border-border bg-card text-card-foreground shadow-sm', className)} ...${props}>${children}</div>`;
+}
+
+function Badge({ variant='default', className='', children }){
+  const variants = {
+    default: 'bg-accent text-accent-foreground border-transparent',
+    success: 'bg-success/15 text-success border-transparent',
+    warning: 'bg-warning/15 text-warning border-transparent',
+    destructive: 'bg-destructive/15 text-destructive border-transparent',
+    outline: 'text-foreground border-border',
+  };
+  return html`<span class=${cn('inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap', variants[variant], className)}>${children}</span>`;
+}
+
+function Dialog({ open, onOpenChange, title, description, children }){
+  if(!open) return null;
+  return html`
+    <div class="fixed inset-0 z-50 bg-black/70 flex items-start justify-center overflow-auto p-6 md:p-10" onMouseDown=${(e) => { if(e.target === e.currentTarget) onOpenChange(false); }}>
+      <div class="w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-lg">
+        <div class="flex items-start justify-between mb-1">
+          <h2 class="text-base font-semibold">${title}</h2>
+          <button class="text-muted-foreground hover:text-foreground" onClick=${() => onOpenChange(false)}>${Icon('x')}</button>
+        </div>
+        ${description ? html`<p class="text-sm text-muted-foreground mb-4">${description}</p>` : null}
+        ${children}
+      </div>
     </div>
   `;
 }
 
-async function loadRefData(){
-  const [te, ma, ea, et, tec] = await Promise.all([
-    sb.from('tipos_equipo').select('*').eq('activo', true).order('orden'),
-    sb.from('marcas').select('*').eq('activo', true).order('orden'),
-    sb.from('estados_admin').select('*').eq('activo', true).order('orden'),
-    sb.from('estados_tecnicos').select('*').eq('activo', true).order('orden'),
-    sb.from('profiles').select('*').eq('role','tecnico').eq('activo', true)
-  ]);
-  STATE.tiposEquipo = te.data || [];
-  STATE.marcas = ma.data || [];
-  STATE.estadosAdmin = ea.data || [];
-  STATE.estadosTecnicos = et.data || [];
-  STATE.tecnicos = tec.data || [];
-}
-
-async function loadOrdenes(){
-  const { data, error } = await sb.from('ordenes')
-    .select(`*, tipo_equipo:tipos_equipo(nombre), marca:marcas(nombre),
-      estado_admin:estados_admin!ordenes_estado_admin_id_fkey(id,nombre,mensaje_whatsapp),
-      estado_tecnico:estados_tecnicos!ordenes_estado_tecnico_id_fkey(id,nombre,mensaje_whatsapp,dispara_estado_admin_id),
-      tecnico:profiles!ordenes_tecnico_id_fkey(full_name)`)
-    .order('numero', { ascending:false });
-  if(error){ console.error(error); STATE.ordenes = []; return; }
-  STATE.ordenes = data;
-}
-
-async function loadCfgAll(){
-  const [te, ma, ea, et] = await Promise.all([
-    sb.from('tipos_equipo').select('*').order('orden'),
-    sb.from('marcas').select('*').order('orden'),
-    sb.from('estados_admin').select('*').order('orden'),
-    sb.from('estados_tecnicos').select('*').order('orden'),
-  ]);
-  STATE.cfgTipos = te.data || [];
-  STATE.cfgMarcas = ma.data || [];
-  STATE.cfgEstadosAdmin = ea.data || [];
-  STATE.cfgEstadosTecnicos = et.data || [];
-}
-
-async function loadHistorial(ordenId){
-  const { data, error } = await sb.from('historial_estados')
-    .select(`*, estado_admin:estados_admin(nombre), estado_tecnico:estados_tecnicos(nombre), usuario:profiles(full_name)`)
-    .eq('orden_id', ordenId)
-    .order('fecha', { ascending:false });
-  STATE.historial = error ? [] : data;
-}
-
-async function loadProfile(userId){
-  const { data } = await sb.from('profiles').select('*').eq('id', userId).single();
-  STATE.profile = data;
-}
-
-// ---------- RENDER ----------
-
-function render(){
-  if(!STATE.session){ renderLogin(); return; }
-  renderShell();
-}
-
-function renderLogin(){
-  root.innerHTML = `
-  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);">
-    <div class="card" style="width:320px;">
-      <div class="brand" style="padding:0 0 20px;"><span class="dot"></span>ReWop</div>
-      <p style="color:var(--text-2);margin:-12px 0 20px;font-size:13px;">Iniciá sesión para continuar</p>
-      <div class="field"><label>Email</label><input id="li-email" type="email" placeholder="tu@email.com" /></div>
-      <div class="field"><label>Contraseña</label><input id="li-pass" type="password" /></div>
-      <button class="primary" style="width:100%;" onclick="doLogin()">Ingresar</button>
-      <div id="li-err" class="err"></div>
+function Pagination({ page, total, pageSize, onChange }){
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  return html`
+    <div class="flex items-center justify-center gap-4 mt-4 text-sm text-muted-foreground">
+      <${Button} variant="outline" size="sm" disabled=${page<=1} onClick=${() => onChange(page-1)}>${Icon('chevronLeft')} Anterior<//>
+      <span>Página ${page} de ${totalPages}</span>
+      <${Button} variant="outline" size="sm" disabled=${page>=totalPages} onClick=${() => onChange(page+1)}>Siguiente ${Icon('chevronRight')}<//>
     </div>
-  </div>`;
-  document.getElementById('li-pass').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+  `;
 }
 
-async function doLogin(){
-  const email = document.getElementById('li-email').value.trim();
-  const password = document.getElementById('li-pass').value;
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if(error){ document.getElementById('li-err').textContent = 'No pudimos iniciar sesión. Revisá el email y la contraseña.'; return; }
-  STATE.session = data.session;
-  await loadProfile(data.session.user.id);
-  await loadRefData();
-  await loadOrdenes();
-  render();
+const ICON_PATHS = {
+  panel: html`<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>`,
+  plus: html`<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>`,
+  settings: html`<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>`,
+  chevronRight: html`<polyline points="9 18 15 12 9 6"/>`,
+  chevronLeft: html`<polyline points="15 18 9 12 15 6"/>`,
+  message: html`<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>`,
+  logout: html`<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>`,
+  x: html`<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>`,
+};
+function Icon(name, className='w-4 h-4'){
+  return html`<svg class=${className} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]}</svg>`;
 }
 
-async function doLogout(){
-  await sb.auth.signOut();
-  STATE.session = null; STATE.profile = null;
-  render();
+// ---------- helpers ----------
+
+function badgeVariant(nombre){
+  const n = (nombre||'').toLowerCase();
+  if(n.includes('no aceptad') || n.includes('rechaz')) return 'destructive';
+  if(n.includes('entregad') || n.includes('terminado') || n.includes('aceptad')) return 'success';
+  if(n.includes('esperando') || n.includes('deposito') || n.includes('depósito') || n.includes('informar')) return 'warning';
+  if(n.includes('recepcion')) return 'outline';
+  return 'default';
 }
+function fillTemplate(tpl, orden){
+  if(!tpl) return '';
+  return tpl.replaceAll('{cliente_nombre}', orden.cliente_nombre||'').replaceAll('{numero}', orden.numero||'').replaceAll('{presupuesto_monto}', orden.presupuesto_monto ?? '');
+}
+function waLink(tel, texto){ return `https://wa.me/${(tel||'').replace(/\D/g,'')}?text=${encodeURIComponent(texto)}`; }
+function fmtFecha(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-AR', { day:'2-digit', month:'short' }) + ' ' + d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+}
+function matchesOrderSearch(o, q){
+  if(!q) return true;
+  const hay = [o.cliente_nombre, o.cliente_telefono, o.trabajo, o.modelo, o.numero_serie, o.tipo_equipo?.nombre, o.marca?.nombre, o.estado_admin?.nombre, o.estado_tecnico?.nombre, o.accesorios, o.observaciones, o.tecnico?.full_name, String(o.numero)].filter(Boolean).join(' ').toLowerCase();
+  return hay.includes(q);
+}
+
+// ---------- data hooks ----------
+
+function useAppData(session){
+  const [data, setData] = useState({ profile:null, tiposEquipo:[], marcas:[], estadosAdmin:[], estadosTecnicos:[], tecnicos:[], ordenes:[] });
+  const [loading, setLoading] = useState(true);
+
+  const reloadOrdenes = useCallback(async () => {
+    const { data: rows, error } = await sb.from('ordenes')
+      .select(`*, tipo_equipo:tipos_equipo(nombre), marca:marcas(nombre),
+        estado_admin:estados_admin!ordenes_estado_admin_id_fkey(id,nombre,mensaje_whatsapp),
+        estado_tecnico:estados_tecnicos!ordenes_estado_tecnico_id_fkey(id,nombre,mensaje_whatsapp,dispara_estado_admin_id),
+        tecnico:profiles!ordenes_tecnico_id_fkey(full_name)`)
+      .order('numero', { ascending:false });
+    setData(d => ({ ...d, ordenes: error ? [] : rows }));
+  }, []);
+
+  const reloadRef = useCallback(async () => {
+    const [te, ma, ea, et, tec] = await Promise.all([
+      sb.from('tipos_equipo').select('*').eq('activo', true).order('orden'),
+      sb.from('marcas').select('*').eq('activo', true).order('orden'),
+      sb.from('estados_admin').select('*').eq('activo', true).order('orden'),
+      sb.from('estados_tecnicos').select('*').eq('activo', true).order('orden'),
+      sb.from('profiles').select('*').eq('role','tecnico').eq('activo', true),
+    ]);
+    setData(d => ({ ...d, tiposEquipo: te.data||[], marcas: ma.data||[], estadosAdmin: ea.data||[], estadosTecnicos: et.data||[], tecnicos: tec.data||[] }));
+  }, []);
+
+  useEffect(() => {
+    if(!session){ setLoading(false); return; }
+    (async () => {
+      setLoading(true);
+      const { data: prof } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+      setData(d => ({ ...d, profile: prof }));
+      await reloadRef();
+      await reloadOrdenes();
+      setLoading(false);
+    })();
+  }, [session]);
+
+  return { data, setData, loading, reloadOrdenes, reloadRef };
+}
+
+// ---------- Login ----------
+
+function Login({ onLoggedIn }){
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [err, setErr] = useState('');
+
+  const submit = async () => {
+    setErr('');
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){ setErr('No pudimos iniciar sesión. Revisá el email y la contraseña.'); return; }
+    onLoggedIn(data.session);
+  };
+
+  return html`
+    <div class="min-h-screen flex items-center justify-center bg-background">
+      <${Card} className="w-80 p-6">
+        <div class="flex items-center gap-2 font-bold text-base mb-1"><span class="w-2.5 h-2.5 rounded-sm bg-primary"></span>ReWop</div>
+        <p class="text-sm text-muted-foreground mb-5">Iniciá sesión para continuar</p>
+        <div class="mb-3"><${Label}>Email<//><${Input} type="email" placeholder="tu@email.com" value=${email} onChange=${e => setEmail(e.target.value)} /></div>
+        <div class="mb-4"><${Label}>Contraseña<//><${Input} type="password" value=${password}
+          onChange=${e => setPassword(e.target.value)}
+          onKeyDown=${e => { if(e.key === 'Enter') submit(); }} /></div>
+        <${Button} className="w-full" onClick=${submit}>Ingresar<//>
+        ${err ? html`<p class="text-destructive text-sm mt-2">${err}</p>` : null}
+      <//>
+    </div>
+  `;
+}
+
+// ---------- Sidebar / Shell ----------
 
 const CONFIG_CHILDREN = [
   ['cfg-tipos', 'Tipos de equipo'],
@@ -289,487 +278,483 @@ const CONFIG_CHILDREN = [
   ['cfg-etec', 'Estados técnicos'],
 ];
 
-function renderShell(){
-  const role = STATE.profile?.role || 'tecnico';
+function Sidebar({ view, setView, profile, configOpen, setConfigOpen, onLogout }){
+  const role = profile?.role || 'tecnico';
   const isAdmin = role === 'admin';
-  const inConfig = STATE.view.startsWith('cfg-');
-
-  root.innerHTML = `
-    <div id="shell">
-      <div id="sidebar">
-        <div class="brand"><span class="dot"></span>ReWop</div>
-        <div class="nav-item ${STATE.view==='panel'?'active':''}" onclick="setView('panel')">${ICONS.panel}<span>Panel</span></div>
-        <div class="nav-item ${STATE.view==='ordenes'?'active':''}" onclick="setView('ordenes')">${ICONS.plus}<span>Órdenes de servicio</span></div>
-        ${isAdmin ? `
-          <div class="nav-item ${inConfig?'active':''}" onclick="toggleConfigTree()">
-            ${ICONS.settings}<span>Configuración</span>
-            <span class="nav-caret ${STATE.configOpen?'open':''}" style="margin-left:auto;">${ICONS.chevronRight}</span>
-          </div>
-          ${STATE.configOpen ? CONFIG_CHILDREN.map(([k,l]) => `
-            <div class="nav-sub ${STATE.view===k?'active':''}" onclick="setView('${k}')"><span>${l}</span></div>
-          `).join('') : ''}
-        ` : ''}
-        <div class="sidebar-footer">
-          <div class="sidebar-user">
-            <div class="name">${STATE.profile?.full_name || ''}</div>
-            <div>${role}</div>
-          </div>
-          <div class="nav-item" onclick="doLogout()">${ICONS.logout}<span>Salir</span></div>
+  const inConfig = view.startsWith('cfg-');
+  const NavItem = ({ target, icon, label }) => html`
+    <div class=${cn('flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium cursor-pointer mb-0.5',
+        view===target ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}
+      onClick=${() => setView(target)}>
+      ${Icon(icon)}<span>${label}</span>
+    </div>
+  `;
+  return html`
+    <div class="w-56 shrink-0 bg-[hsl(var(--sidebar))] border-r border-border flex flex-col p-3">
+      <div class="flex items-center gap-2 font-bold text-base px-2 pt-2 pb-5"><span class="w-2.5 h-2.5 rounded-sm bg-primary"></span>ReWop</div>
+      <${NavItem} target="panel" icon="panel" label="Panel" />
+      <${NavItem} target="ordenes" icon="plus" label="Órdenes de servicio" />
+      ${isAdmin ? html`
+        <div class=${cn('flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium cursor-pointer mb-0.5',
+            inConfig ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}
+          onClick=${() => setConfigOpen(!configOpen)}>
+          ${Icon('settings')}<span>Configuración</span>
+          <span class=${cn('ml-auto transition-transform', configOpen && 'rotate-90')}>${Icon('chevronRight', 'w-3.5 h-3.5')}</span>
+        </div>
+        ${configOpen ? CONFIG_CHILDREN.map(([k,l]) => html`
+          <div key=${k} class=${cn('flex items-center pl-9 pr-2.5 py-1.5 rounded-md text-sm cursor-pointer mb-0.5',
+              view===k ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}
+            onClick=${() => setView(k)}>${l}</div>
+        `) : null}
+      ` : null}
+      <div class="mt-auto pt-3 border-t border-border">
+        <div class="px-2 py-2 text-xs text-muted-foreground">
+          <div class="text-foreground font-medium text-sm">${profile?.full_name || ''}</div>
+          <div>${role}</div>
+        </div>
+        <div class="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium cursor-pointer text-muted-foreground hover:bg-accent hover:text-foreground" onClick=${onLogout}>
+          ${Icon('logout')}<span>Salir</span>
         </div>
       </div>
-      <div id="main"></div>
     </div>
   `;
-  renderView();
-  if(STATE.showNewOrder) renderNewOrderModal();
 }
 
-function toggleConfigTree(){
-  STATE.configOpen = !STATE.configOpen;
-  render();
-}
+// ---------- Órdenes list (Panel & Órdenes de servicio) ----------
 
-function setView(v, orderId){
-  STATE.view = v;
-  STATE.detailOrderId = orderId || null;
-  if(v === 'ordenes' || v === 'panel'){ STATE.ordersPage = 1; }
-  if(v.startsWith('cfg-')){
-    STATE.cfgSearch = ''; STATE.cfgPage = 1;
-    loadCfgAll().then(() => render());
-    return;
-  }
-  render();
-  if(v === 'detail' && orderId) loadHistorial(orderId).then(() => renderView());
-}
+function OrdenesList({ withMetrics, appData, reloadOrdenes, openNewOrder, goDetail }){
+  const { ordenes } = appData;
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
-function renderView(){
-  const m = document.getElementById('main');
-  if(STATE.view === 'panel') return renderOrdenesList(m, true);
-  if(STATE.view === 'ordenes') return renderOrdenesList(m, false);
-  if(STATE.view === 'detail') return renderDetail(m);
-  if(STATE.view === 'cfg-tipos') return renderCfgSimple(m, 'tipos_equipo', STATE.cfgTipos, 'Tipos de equipo');
-  if(STATE.view === 'cfg-marcas') return renderCfgSimple(m, 'marcas', STATE.cfgMarcas, 'Marcas');
-  if(STATE.view === 'cfg-eadmin') return renderCfgEstadosAdmin(m);
-  if(STATE.view === 'cfg-etec') return renderCfgEstadosTecnicos(m);
-}
-
-function renderOrdenesList(c, withMetrics){
-  const abiertos = STATE.ordenes.filter(o => (o.estado_admin?.nombre||'') !== 'Entregado').length;
-  const paraInformar = STATE.ordenes.filter(o => (o.estado_admin?.nombre||'').toLowerCase().includes('informar')).length;
-  const enReparacion = STATE.ordenes.filter(o => (o.estado_tecnico?.nombre||'').toLowerCase().includes('reparaci')).length;
-
-  const q = STATE.search.toLowerCase();
-  const filtered = STATE.ordenes.filter(o => matchesOrderSearch(o, q));
+  const filtered = useMemo(() => ordenes.filter(o => matchesOrderSearch(o, search.toLowerCase())), [ordenes, search]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  if(STATE.ordersPage > totalPages) STATE.ordersPage = totalPages;
-  const start = (STATE.ordersPage - 1) * PAGE_SIZE;
-  const list = filtered.slice(start, start + PAGE_SIZE);
+  const pageClamped = Math.min(page, totalPages);
+  const list = filtered.slice((pageClamped-1)*PAGE_SIZE, pageClamped*PAGE_SIZE);
 
-  c.innerHTML = `
-    <h1 class="page-title">${withMetrics ? 'Panel' : 'Órdenes de servicio'}</h1>
-    <p class="page-sub">${withMetrics ? 'Vista general de todas las órdenes' : 'Listado completo de órdenes'}</p>
-    ${withMetrics ? `
-      <div class="metrics">
-        <div class="metric"><div class="num">${STATE.ordenes.length}</div><div class="lbl">Total órdenes</div></div>
-        <div class="metric"><div class="num">${abiertos}</div><div class="lbl">Abiertas</div></div>
-        <div class="metric"><div class="num">${paraInformar}</div><div class="lbl">Para informar</div></div>
-        <div class="metric"><div class="num">${enReparacion}</div><div class="lbl">En reparación</div></div>
-      </div>
-    ` : ''}
-    <div class="toolbar">
-      <input id="search-input" placeholder="Buscar por cualquier campo de la orden (cliente, teléfono, equipo, estado...)" value="${STATE.search}" />
-      <button class="primary" onclick="openNewOrderModal()">${ICONS.plus} Nueva orden</button>
-    </div>
-    <div class="ord-head"><span>#</span><span>Cliente / equipo</span><span>Admin</span><span>Técnico</span><span></span></div>
-    ${list.length === 0 ? `<p style="color:var(--text-2);">No se encontraron órdenes.</p>` : ''}
-    ${list.map(o => `
-      <div class="ord-row" onclick="setView('detail','${o.id}')">
-        <span class="ticket-num">#${o.numero}</span>
-        <span>${o.cliente_nombre} — ${o.tipo_equipo?.nombre||''} ${o.marca?.nombre||''}</span>
-        <span class="badge" style="${badgeStyle(o.estado_admin?.nombre)}">${o.estado_admin?.nombre||'—'}</span>
-        <span class="badge" style="${badgeStyle(o.estado_tecnico?.nombre)}">${o.estado_tecnico?.nombre||'—'}</span>
-        <span style="color:var(--text-muted);">${ICONS.chevronRight}</span>
-      </div>
-    `).join('')}
-    ${paginationHtml(STATE.ordersPage, filtered.length, `changeOrdersPage(-1,${withMetrics})`, `changeOrdersPage(1,${withMetrics})`)}
-  `;
-  const si = document.getElementById('search-input');
-  si.addEventListener('input', () => {
-    STATE.search = si.value; STATE.ordersPage = 1;
-    renderOrdenesList(c, withMetrics);
-    si.focus(); si.setSelectionRange(si.value.length, si.value.length);
-  });
-}
+  const abiertos = ordenes.filter(o => (o.estado_admin?.nombre||'') !== 'Entregado').length;
+  const paraInformar = ordenes.filter(o => (o.estado_admin?.nombre||'').toLowerCase().includes('informar')).length;
+  const enReparacion = ordenes.filter(o => (o.estado_tecnico?.nombre||'').toLowerCase().includes('reparaci')).length;
 
-function changeOrdersPage(delta, withMetrics){
-  STATE.ordersPage += delta;
-  renderOrdenesList(document.getElementById('main'), withMetrics);
-}
-
-function openNewOrderModal(){
-  STATE.showNewOrder = true;
-  renderNewOrderModal();
-}
-
-function closeNewOrderModal(){
-  STATE.showNewOrder = false;
-  document.getElementById('new-order-modal-bg')?.remove();
-}
-
-function renderNewOrderModal(){
-  document.getElementById('new-order-modal-bg')?.remove();
-  const div = document.createElement('div');
-  div.className = 'modal-bg';
-  div.id = 'new-order-modal-bg';
-  div.innerHTML = `
-    <div class="modal">
-      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:4px;">
-        <p style="font-weight:600;margin:0;">Nueva orden</p>
-        <button class="ghost small" onclick="closeNewOrderModal()">✕</button>
+  return html`
+    <div>
+      <h1 class="text-xl font-bold mb-1">${withMetrics ? 'Panel' : 'Órdenes de servicio'}</h1>
+      <p class="text-sm text-muted-foreground mb-5">${withMetrics ? 'Vista general de todas las órdenes' : 'Listado completo de órdenes'}</p>
+      ${withMetrics ? html`
+        <div class="grid gap-2.5 mb-5" style=${{gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))'}}>
+          <${Card} className="p-3.5"><div class="text-2xl font-bold">${ordenes.length}</div><div class="text-xs text-muted-foreground">Total órdenes</div><//>
+          <${Card} className="p-3.5"><div class="text-2xl font-bold">${abiertos}</div><div class="text-xs text-muted-foreground">Abiertas</div><//>
+          <${Card} className="p-3.5"><div class="text-2xl font-bold">${paraInformar}</div><div class="text-xs text-muted-foreground">Para informar</div><//>
+          <${Card} className="p-3.5"><div class="text-2xl font-bold">${enReparacion}</div><div class="text-xs text-muted-foreground">En reparación</div><//>
+        </div>
+      ` : null}
+      <div class="flex gap-3 items-center mb-3.5">
+        <${Input} className="flex-1" placeholder="Buscar por cualquier campo de la orden (cliente, teléfono, equipo, estado...)" value=${search} onChange=${e => { setSearch(e.target.value); setPage(1); }} />
+        <${Button} className="shrink-0" onClick=${openNewOrder}>${Icon('plus')} Nueva orden<//>
       </div>
-      <p style="color:var(--text-2);font-size:13px;margin:0 0 16px;">Recepción de un equipo</p>
-      <div class="field"><label>Nombre del cliente</label><input id="no-nombre" placeholder="Juan Pérez" /></div>
-      <div class="field"><label>Teléfono</label><input id="no-tel" placeholder="11 2345 6789" /></div>
-      <div class="field"><label>Trabajo</label><input id="no-trabajo" placeholder="No enciende, pantalla rota, etc." /></div>
-      <div class="row field">
-        <div><label>Tipo de equipo</label><select id="no-tipo">${STATE.tiposEquipo.map(t=>`<option value="${t.id}">${t.nombre}</option>`).join('')}</select></div>
-        <div><label>Marca</label><select id="no-marca">${STATE.marcas.map(m=>`<option value="${m.id}">${m.nombre}</option>`).join('')}</select></div>
+      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'56px 1fr 150px 150px 20px'}}>
+        <span>#</span><span>Cliente / equipo</span><span>Admin</span><span>Técnico</span><span></span>
       </div>
-      <div class="row field">
-        <div><label>Modelo</label><input id="no-modelo" /></div>
-        <div><label>N.º de serie</label><input id="no-serie" /></div>
-      </div>
-      <div class="field"><label>Accesorios que dejó</label><input id="no-accesorios" /></div>
-      <div class="field"><label>Observaciones</label><textarea id="no-obs" rows="2"></textarea></div>
-      <button class="primary" style="width:100%;" onclick="crearOrden()">Guardar</button>
-      <div id="no-err" class="err"></div>
+      ${list.length === 0 ? html`<p class="text-muted-foreground text-sm">No se encontraron órdenes.</p>` : null}
+      ${list.map(o => html`
+        <div key=${o.id} class="grid gap-2.5 items-center px-3.5 py-3 bg-card border border-border rounded-md cursor-pointer mb-2 hover:border-muted-foreground/40"
+          style=${{gridTemplateColumns:'56px 1fr 150px 150px 20px'}} onClick=${() => goDetail(o.id)}>
+          <span class="font-mono text-sm">#${o.numero}</span>
+          <span class="text-sm">${o.cliente_nombre} — ${o.tipo_equipo?.nombre||''} ${o.marca?.nombre||''}</span>
+          <${Badge} variant=${badgeVariant(o.estado_admin?.nombre)}>${o.estado_admin?.nombre||'—'}<//>
+          <${Badge} variant=${badgeVariant(o.estado_tecnico?.nombre)}>${o.estado_tecnico?.nombre||'—'}<//>
+          <span class="text-muted-foreground">${Icon('chevronRight')}</span>
+        </div>
+      `)}
+      <${Pagination} page=${pageClamped} total=${filtered.length} pageSize=${PAGE_SIZE} onChange=${setPage} />
     </div>
   `;
-  document.body.appendChild(div);
 }
 
-async function crearOrden(){
-  const nombre = document.getElementById('no-nombre').value.trim();
-  const tel = document.getElementById('no-tel').value.trim();
-  const trabajo = document.getElementById('no-trabajo').value.trim();
-  if(!nombre || !tel || !trabajo){ document.getElementById('no-err').textContent = 'Completá nombre, teléfono y trabajo.'; return; }
-  const estadoAdminInitial = STATE.estadosAdmin[0]?.id;
-  const estadoTecInicial = STATE.estadosTecnicos[0]?.id;
-  const payload = {
-    cliente_nombre: nombre, cliente_telefono: tel, trabajo,
-    tipo_equipo_id: document.getElementById('no-tipo').value,
-    marca_id: document.getElementById('no-marca').value,
-    modelo: document.getElementById('no-modelo').value || null,
-    numero_serie: document.getElementById('no-serie').value || null,
-    accesorios: document.getElementById('no-accesorios').value || null,
-    observaciones: document.getElementById('no-obs').value || null,
-    estado_admin_id: estadoAdminInicial, estado_tecnico_id: estadoTecInicial,
-    usuario_recepciono_id: STATE.session.user.id
+// ---------- New order dialog ----------
+
+function NewOrderDialog({ open, onOpenChange, appData, reloadOrdenes, session, goDetail }){
+  const empty = { nombre:'', tel:'', trabajo:'', tipo:'', marca:'', modelo:'', serie:'', accesorios:'', obs:'' };
+  const [form, setForm] = useState(empty);
+  const [err, setErr] = useState('');
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  useEffect(() => {
+    if(open){
+      setForm({ ...empty, tipo: appData.tiposEquipo[0]?.id || '', marca: appData.marcas[0]?.id || '' });
+      setErr('');
+    }
+  }, [open]);
+
+  const submit = async () => {
+    if(!form.nombre.trim() || !form.tel.trim() || !form.trabajo.trim()){ setErr('Completá nombre, teléfono y trabajo.'); return; }
+    const estadoAdminInicial = appData.estadosAdmin[0]?.id;
+    const estadoTecInicial = appData.estadosTecnicos[0]?.id;
+    const payload = {
+      cliente_nombre: form.nombre.trim(), cliente_telefono: form.tel.trim(), trabajo: form.trabajo.trim(),
+      tipo_equipo_id: form.tipo, marca_id: form.marca,
+      modelo: form.modelo || null, numero_serie: form.serie || null,
+      accesorios: form.accesorios || null, observaciones: form.obs || null,
+      estado_admin_id: estadoAdminInicial, estado_tecnico_id: estadoTecInicial,
+      usuario_recepciono_id: session.user.id,
+    };
+    const { data, error } = await sb.from('ordenes').insert(payload).select().single();
+    if(error){ setErr('No se pudo crear la orden.'); console.error(error); return; }
+    await sb.from('historial_estados').insert([
+      { orden_id: data.id, tipo_flujo:'admin', estado_admin_id: estadoAdminInicial, usuario_id: session.user.id },
+      { orden_id: data.id, tipo_flujo:'tecnico', estado_tecnico_id: estadoTecInicial, usuario_id: session.user.id },
+    ]);
+    await reloadOrdenes();
+    onOpenChange(false);
+    goDetail(data.id);
   };
-  const { data, error } = await sb.from('ordenes').insert(payload).select().single();
-  if(error){ document.getElementById('no-err').textContent = 'No se pudo crear la orden.'; console.error(error); return; }
-  await sb.from('historial_estados').insert([
-    { orden_id: data.id, tipo_flujo:'admin', estado_admin_id: estadoAdminInitial, usuario_id: STATE.session.user.id },
-    { orden_id: data.id, tipo_flujo:'tecnico', estado_tecnico_id: estadoTecInicial, usuario_id: STATE.session.user.id }
-  ]);
-  await loadOrdenes();
-  closeNewOrderModal();
-  setView('ordenes');
+
+  return html`
+    <${Dialog} open=${open} onOpenChange=${onOpenChange} title="Nueva orden" description="Recepción de un equipo">
+      <div class="mb-3"><${Label}>Nombre del cliente<//><${Input} placeholder="Juan Pérez" value=${form.nombre} onChange=${set('nombre')} /></div>
+      <div class="mb-3"><${Label}>Teléfono<//><${Input} placeholder="11 2345 6789" value=${form.tel} onChange=${set('tel')} /></div>
+      <div class="mb-3"><${Label}>Trabajo<//><${Input} placeholder="No enciende, pantalla rota, etc." value=${form.trabajo} onChange=${set('trabajo')} /></div>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div><${Label}>Tipo de equipo<//><${Select} value=${form.tipo} onChange=${set('tipo')}>${appData.tiposEquipo.map(t => html`<option key=${t.id} value=${t.id}>${t.nombre}</option>`)}<//></div>
+        <div><${Label}>Marca<//><${Select} value=${form.marca} onChange=${set('marca')}>${appData.marcas.map(m => html`<option key=${m.id} value=${m.id}>${m.nombre}</option>`)}<//></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div><${Label}>Modelo<//><${Input} value=${form.modelo} onChange=${set('modelo')} /></div>
+        <div><${Label}>N.º de serie<//><${Input} value=${form.serie} onChange=${set('serie')} /></div>
+      </div>
+      <div class="mb-3"><${Label}>Accesorios que dejó<//><${Input} value=${form.accesorios} onChange=${set('accesorios')} /></div>
+      <div class="mb-4"><${Label}>Observaciones<//><${Textarea} rows="2" value=${form.obs} onChange=${set('obs')} /></div>
+      <${Button} className="w-full" onClick=${submit}>Guardar<//>
+      ${err ? html`<p class="text-destructive text-sm mt-2">${err}</p>` : null}
+    <//>
+  `;
 }
 
-function renderDetail(c){
-  const o = STATE.ordenes.find(x => x.id === STATE.detailOrderId);
-  if(!o){ c.innerHTML = `<p>Orden no encontrada.</p>`; return; }
-  const role = STATE.profile?.role;
+// ---------- Order detail ----------
+
+function OrderDetail({ orderId, appData, session, reloadOrdenes, goBack }){
+  const [historial, setHistorial] = useState([]);
+  const o = appData.ordenes.find(x => x.id === orderId);
+  const role = appData.profile?.role;
   const canEditTecnico = role === 'admin' || role === 'tecnico';
   const canEditAdmin = role === 'admin' || role === 'operador';
+  const [actSel, setActSel] = useState('');
+  const [tecnicoSel, setTecnicoSel] = useState(o?.tecnico_id || '');
+  const [monto, setMonto] = useState(o?.presupuesto_monto ?? '');
+  const [presEstado, setPresEstado] = useState(o?.presupuesto_estado || 'pendiente');
 
-  const activityOptions = [];
-  if(canEditAdmin){
-    activityOptions.push(`<optgroup label="Flujo administrativo">`);
-    STATE.estadosAdmin.forEach(e => activityOptions.push(`<option value="admin:${e.id}">${e.nombre}</option>`));
-    activityOptions.push(`</optgroup>`);
-  }
-  if(canEditTecnico){
-    activityOptions.push(`<optgroup label="Flujo técnico">`);
-    STATE.estadosTecnicos.forEach(e => activityOptions.push(`<option value="tecnico:${e.id}">${e.nombre}</option>`));
-    activityOptions.push(`</optgroup>`);
-  }
+  const loadHist = useCallback(async () => {
+    const { data, error } = await sb.from('historial_estados')
+      .select(`*, estado_admin:estados_admin(nombre), estado_tecnico:estados_tecnicos(nombre), usuario:profiles(full_name)`)
+      .eq('orden_id', orderId).order('fecha', { ascending:false });
+    setHistorial(error ? [] : data);
+  }, [orderId]);
 
-  c.innerHTML = `
-    <div class="back-link" onclick="setView('ordenes')">${ICONS.chevronLeft}<span>Volver a órdenes</span></div>
-    <h1 class="page-title ticket-num">Orden #${o.numero}</h1>
-    <p class="page-sub">${o.cliente_nombre} · ${o.cliente_telefono}</p>
+  useEffect(() => { loadHist(); }, [orderId]);
+  useEffect(() => { setTecnicoSel(o?.tecnico_id || ''); setMonto(o?.presupuesto_monto ?? ''); setPresEstado(o?.presupuesto_estado || 'pendiente'); }, [o?.id]);
 
-    <div class="detail-grid">
-      <div>
-        <div class="card" style="margin-bottom:16px;">
-          <div class="section-title">Agregar actividad</div>
-          <div class="row" style="align-items:end;">
-            <div><select id="act-select">${activityOptions.join('')}</select></div>
-            <button class="primary" style="flex:0;white-space:nowrap;" onclick="agregarActividad('${o.id}')">${ICONS.plus} Agregar</button>
-          </div>
+  if(!o) return html`<p>Orden no encontrada.</p>`;
+
+  const agregarActividad = async () => {
+    if(!actSel) return;
+    const [tipo, estadoId] = actSel.split(':');
+    if(tipo === 'admin'){
+      await sb.from('ordenes').update({ estado_admin_id: estadoId, updated_at: new Date().toISOString() }).eq('id', orderId);
+      await sb.from('historial_estados').insert({ orden_id: orderId, tipo_flujo:'admin', estado_admin_id: estadoId, usuario_id: session.user.id });
+    } else {
+      const estado = appData.estadosTecnicos.find(e => e.id === estadoId);
+      const updates = { estado_tecnico_id: estadoId, updated_at: new Date().toISOString() };
+      if(estado?.dispara_estado_admin_id) updates.estado_admin_id = estado.dispara_estado_admin_id;
+      await sb.from('ordenes').update(updates).eq('id', orderId);
+      const inserts = [{ orden_id: orderId, tipo_flujo:'tecnico', estado_tecnico_id: estadoId, usuario_id: session.user.id }];
+      if(estado?.dispara_estado_admin_id) inserts.push({ orden_id: orderId, tipo_flujo:'admin', estado_admin_id: estado.dispara_estado_admin_id, usuario_id: session.user.id });
+      await sb.from('historial_estados').insert(inserts);
+    }
+    await reloadOrdenes(); await loadHist(); setActSel('');
+  };
+
+  const guardarTecnico = async () => { await sb.from('ordenes').update({ tecnico_id: tecnicoSel || null, updated_at: new Date().toISOString() }).eq('id', orderId); await reloadOrdenes(); };
+  const guardarPresupuesto = async () => { await sb.from('ordenes').update({ presupuesto_monto: monto || null, presupuesto_estado: presEstado, updated_at: new Date().toISOString() }).eq('id', orderId); await reloadOrdenes(); };
+  const enviarWhatsapp = async () => {
+    const texto = fillTemplate(o.estado_admin.mensaje_whatsapp, o);
+    await sb.from('mensajes_enviados').insert({ orden_id: orderId, estado_relacionado: o.estado_admin.nombre, contenido: texto, canal:'whatsapp' });
+    window.open(waLink(o.cliente_telefono, texto), '_blank');
+  };
+
+  return html`
+    <div>
+      <div class="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer w-fit mb-3.5 hover:text-foreground" onClick=${goBack}>${Icon('chevronLeft')}<span>Volver a órdenes</span></div>
+      <h1 class="text-xl font-bold font-mono mb-1">Orden #${o.numero}</h1>
+      <p class="text-sm text-muted-foreground mb-5">${o.cliente_nombre} · ${o.cliente_telefono}</p>
+
+      <div class="grid gap-5" style=${{gridTemplateColumns:'1fr 300px'}}>
+        <div>
+          <${Card} className="p-4.5 mb-4">
+            <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Agregar actividad</div>
+            <div class="flex gap-3 items-end">
+              <${Select} className="flex-1" value=${actSel} onChange=${e => setActSel(e.target.value)}>
+                <option value="">Elegir actividad...</option>
+                ${canEditAdmin ? html`<optgroup label="Flujo administrativo">${appData.estadosAdmin.map(e => html`<option key=${e.id} value=${'admin:'+e.id}>${e.nombre}</option>`)}<//>` : null}
+                ${canEditTecnico ? html`<optgroup label="Flujo técnico">${appData.estadosTecnicos.map(e => html`<option key=${e.id} value=${'tecnico:'+e.id}>${e.nombre}</option>`)}<//>` : null}
+              <//>
+              <${Button} className="shrink-0" onClick=${agregarActividad}>${Icon('plus')} Agregar<//>
+            </div>
+          <//>
+
+          <${Card} className="p-4.5">
+            <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Historial de actividades</div>
+            <div class="relative pl-5">
+              <div class="absolute left-[5px] top-1 bottom-1 w-px bg-border"></div>
+              ${historial.length === 0 ? html`<p class="text-sm text-muted-foreground">Sin actividad registrada.</p>` :
+                historial.map(h => html`
+                  <div key=${h.id} class="relative pb-4.5">
+                    <div class="absolute -left-5 top-0.5 w-2 h-2 rounded-full bg-primary ring-2 ring-card"></div>
+                    <div class="text-sm font-medium">
+                      ${h.tipo_flujo === 'admin' ? (h.estado_admin?.nombre||'') : (h.estado_tecnico?.nombre||'')}
+                      <${Badge} className="ml-1.5" variant=${h.tipo_flujo==='admin'?'default':'outline'}>${h.tipo_flujo==='admin'?'Administrativo':'Técnico'}<//>
+                    </div>
+                    <div class="text-xs text-muted-foreground mt-0.5">${fmtFecha(h.fecha)} · ${h.usuario?.full_name || 'Sistema'}</div>
+                  </div>
+                `)}
+            </div>
+          <//>
         </div>
 
-        <div class="card">
-          <div class="section-title">Historial de actividades</div>
-          <div class="timeline" id="timeline">
-            ${STATE.historial.length === 0 ? '<p style="color:var(--text-2);font-size:13px;">Sin actividad registrada.</p>' : STATE.historial.map(h => `
-              <div class="tl-item">
-                <div class="tl-title">${h.tipo_flujo === 'admin' ? (h.estado_admin?.nombre||'') : (h.estado_tecnico?.nombre||'')}
-                  <span class="badge" style="${h.tipo_flujo==='admin'?'background:var(--accent-bg);color:var(--accent-text);':'background:var(--neutral-bg);color:var(--neutral-text);'}margin-left:6px;font-size:10px;">${h.tipo_flujo === 'admin' ? 'Administrativo' : 'Técnico'}</span>
-                </div>
-                <div class="tl-meta">${fmtFecha(h.fecha)} · ${h.usuario?.full_name || 'Sistema'}</div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
+        <div>
+          <${Card} className="p-4.5 mb-4">
+            <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Equipo</div>
+            <p class="text-sm mb-1">${o.tipo_equipo?.nombre||''} ${o.marca?.nombre||''} ${o.modelo||''}</p>
+            ${o.numero_serie ? html`<p class="text-xs text-muted-foreground mb-1">N/S ${o.numero_serie}</p>` : null}
+            <p class="text-sm text-muted-foreground mt-2">${o.trabajo}</p>
+            ${o.accesorios ? html`<p class="text-xs text-muted-foreground mt-2">Accesorios: ${o.accesorios}</p>` : null}
+            ${o.observaciones ? html`<p class="text-xs text-muted-foreground mt-2">Obs: ${o.observaciones}</p>` : null}
+          <//>
 
-      <div>
-        <div class="card" style="margin-bottom:16px;">
-          <div class="section-title">Equipo</div>
-          <p style="margin:0 0 4px;font-size:13px;">${o.tipo_equipo?.nombre||''} ${o.marca?.nombre||''} ${o.modelo||''}</p>
-          ${o.numero_serie ? `<p style="margin:0 0 4px;font-size:12px;color:var(--text-2);">N/S ${o.numero_serie}</p>` : ''}
-          <p style="margin:8px 0 0;font-size:13px;color:var(--text-2);">${o.trabajo}</p>
-          ${o.accesorios ? `<p style="margin:8px 0 0;font-size:12px;color:var(--text-2);">Accesorios: ${o.accesorios}</p>` : ''}
-          ${o.observaciones ? `<p style="margin:8px 0 0;font-size:12px;color:var(--text-2);">Obs: ${o.observaciones}</p>` : ''}
-        </div>
+          <${Card} className="p-4.5 mb-4">
+            <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Estado actual</div>
+            <p class="text-xs text-muted-foreground mb-1.5">Administrativo</p>
+            <${Badge} variant=${badgeVariant(o.estado_admin?.nombre)}>${o.estado_admin?.nombre||'—'}<//>
+            <p class="text-xs text-muted-foreground mt-3 mb-1.5">Técnico</p>
+            <${Badge} variant=${badgeVariant(o.estado_tecnico?.nombre)}>${o.estado_tecnico?.nombre||'—'}<//>
+            ${o.estado_admin?.mensaje_whatsapp ? html`
+              <div class="bg-muted rounded-md p-2.5 text-sm whitespace-pre-wrap mt-3 mb-3 border border-border">${fillTemplate(o.estado_admin.mensaje_whatsapp, o)}</div>
+              <${Button} variant="secondary" className="w-full" onClick=${enviarWhatsapp}>${Icon('message')} Abrir WhatsApp<//>
+            ` : null}
+          <//>
 
-        <div class="card" style="margin-bottom:16px;">
-          <div class="section-title">Estado actual</div>
-          <p style="margin:0 0 6px;font-size:12px;color:var(--text-2);">Administrativo</p>
-          <span class="badge" style="${badgeStyle(o.estado_admin?.nombre)}">${o.estado_admin?.nombre||'—'}</span>
-          <p style="margin:12px 0 6px;font-size:12px;color:var(--text-2);">Técnico</p>
-          <span class="badge" style="${badgeStyle(o.estado_tecnico?.nombre)}">${o.estado_tecnico?.nombre||'—'}</span>
-          ${o.estado_admin?.mensaje_whatsapp ? `
-            <div class="msg-box">${fillTemplate(o.estado_admin.mensaje_whatsapp, o)}</div>
-            <button style="width:100%;" onclick="enviarWhatsapp('${o.id}')">${ICONS.message} Abrir WhatsApp</button>
-          ` : ''}
-        </div>
+          <${Card} className="p-4.5 mb-4">
+            <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Técnico asignado</div>
+            <${Select} disabled=${!canEditAdmin} value=${tecnicoSel} onChange=${e => setTecnicoSel(e.target.value)}>
+              <option value="">Sin asignar</option>
+              ${appData.tecnicos.map(t => html`<option key=${t.id} value=${t.id}>${t.full_name}</option>`)}
+            <//>
+            ${canEditAdmin ? html`<${Button} variant="secondary" className="w-full mt-2" onClick=${guardarTecnico}>Guardar<//>` : null}
+          <//>
 
-        <div class="card" style="margin-bottom:16px;">
-          <div class="section-title">Técnico asignado</div>
-          <select id="sel-tecnico" ${canEditAdmin?'':'disabled'}>
-            <option value="">Sin asignar</option>
-            ${STATE.tecnicos.map(t=>`<option value="${t.id}" ${t.id===o.tecnico_id?'selected':''}>${t.full_name}</option>`).join('')}
-          </select>
-          ${canEditAdmin ? `<button style="width:100%;margin-top:8px;" onclick="asignarTecnico('${o.id}')">Guardar</button>` : ''}
-        </div>
-
-        <div class="card">
-          <div class="section-title">Presupuesto</div>
-          <div class="field"><label>Monto</label><input id="pres-monto" type="number" value="${o.presupuesto_monto ?? ''}" ${canEditAdmin?'':'disabled'} /></div>
-          <div class="field"><label>Estado</label>
-            <select id="pres-estado" ${canEditAdmin?'':'disabled'}>
-              <option value="pendiente" ${o.presupuesto_estado==='pendiente'?'selected':''}>Pendiente</option>
-              <option value="aceptado" ${o.presupuesto_estado==='aceptado'?'selected':''}>Aceptado</option>
-              <option value="rechazado" ${o.presupuesto_estado==='rechazado'?'selected':''}>Rechazado</option>
-            </select>
-          </div>
-          ${canEditAdmin ? `<button style="width:100%;" onclick="guardarPresupuesto('${o.id}')">Guardar presupuesto</button>` : ''}
+          <${Card} className="p-4.5">
+            <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Presupuesto</div>
+            <div class="mb-3"><${Label}>Monto<//><${Input} type="number" disabled=${!canEditAdmin} value=${monto} onChange=${e => setMonto(e.target.value)} /></div>
+            <div class="mb-3">
+              <${Label}>Estado<//>
+              <${Select} disabled=${!canEditAdmin} value=${presEstado} onChange=${e => setPresEstado(e.target.value)}>
+                <option value="pendiente">Pendiente</option>
+                <option value="aceptado">Aceptado</option>
+                <option value="rechazado">Rechazado</option>
+              <//>
+            </div>
+            ${canEditAdmin ? html`<${Button} variant="secondary" className="w-full" onClick=${guardarPresupuesto}>Guardar presupuesto<//>` : null}
+          <//>
         </div>
       </div>
     </div>
   `;
 }
 
-async function agregarActividad(ordenId){
-  const val = document.getElementById('act-select').value;
-  if(!val) return;
-  const [tipo, estadoId] = val.split(':');
-  if(tipo === 'admin'){
-    await sb.from('ordenes').update({ estado_admin_id: estadoId, updated_at: new Date().toISOString() }).eq('id', ordenId);
-    await sb.from('historial_estados').insert({ orden_id: ordenId, tipo_flujo:'admin', estado_admin_id: estadoId, usuario_id: STATE.session.user.id });
-  } else {
-    const estado = STATE.estadosTecnicos.find(e => e.id === estadoId);
-    const updates = { estado_tecnico_id: estadoId, updated_at: new Date().toISOString() };
-    if(estado?.dispara_estado_admin_id) updates.estado_admin_id = estado.dispara_estado_admin_id;
-    await sb.from('ordenes').update(updates).eq('id', ordenId);
-    const inserts = [{ orden_id: ordenId, tipo_flujo:'tecnico', estado_tecnico_id: estadoId, usuario_id: STATE.session.user.id }];
-    if(estado?.dispara_estado_admin_id) inserts.push({ orden_id: ordenId, tipo_flujo:'admin', estado_admin_id: estado.dispara_estado_admin_id, usuario_id: STATE.session.user.id });
-    await sb.from('historial_estados').insert(inserts);
-  }
-  await loadOrdenes();
-  await loadHistorial(ordenId);
-  renderDetail(document.getElementById('main'));
+// ---------- Config screens ----------
+
+function useCfgRows(table, extraSelect=''){
+  const [rows, setRows] = useState([]);
+  const reload = useCallback(async () => {
+    const { data } = await sb.from(table).select('*').order('orden');
+    setRows(data || []);
+  }, [table]);
+  useEffect(() => { reload(); }, [reload]);
+  return [rows, reload];
 }
 
-async function asignarTecnico(ordenId){
-  const tecnicoId = document.getElementById('sel-tecnico').value || null;
-  await sb.from('ordenes').update({ tecnico_id: tecnicoId, updated_at: new Date().toISOString() }).eq('id', ordenId);
-  await loadOrdenes();
-  renderDetail(document.getElementById('main'));
+function ConfigToolbar({ search, setSearch }){
+  return html`<div class="flex gap-3 mb-3.5"><${Input} className="flex-1" placeholder="Buscar por nombre" value=${search} onChange=${e => setSearch(e.target.value)} /></div>`;
 }
 
-async function guardarPresupuesto(ordenId){
-  const monto = document.getElementById('pres-monto').value || null;
-  const estado = document.getElementById('pres-estado').value;
-  await sb.from('ordenes').update({ presupuesto_monto: monto, presupuesto_estado: estado, updated_at: new Date().toISOString() }).eq('id', ordenId);
-  await loadOrdenes();
-  renderDetail(document.getElementById('main'));
-}
+function ConfigSimple({ table, title, reloadRef }){
+  const [rows, reload] = useCfgRows(table);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [newName, setNewName] = useState('');
 
-async function enviarWhatsapp(ordenId){
-  const o = STATE.ordenes.find(x => x.id === ordenId);
-  const texto = fillTemplate(o.estado_admin.mensaje_whatsapp, o);
-  await sb.from('mensajes_enviados').insert({ orden_id: ordenId, estado_relacionado: o.estado_admin.nombre, contenido: texto, canal:'whatsapp' });
-  window.open(waLink(o.cliente_telefono, texto), '_blank');
-}
+  const filtered = rows.filter(r => !search || r.nombre.toLowerCase().includes(search.toLowerCase()));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageClamped = Math.min(page, totalPages);
+  const list = filtered.slice((pageClamped-1)*PAGE_SIZE, pageClamped*PAGE_SIZE);
 
-// ---------- CONFIGURACIÓN ----------
-// Nota: estas tablas están referenciadas por "ordenes" (FK), así que nunca se borran:
-// solo se pueden activar/desactivar.
+  const save = async (id, nombre) => { await sb.from(table).update({ nombre }).eq('id', id); await reload(); await reloadRef(); };
+  const toggle = async (id, activo) => { await sb.from(table).update({ activo: !activo }).eq('id', id); await reload(); await reloadRef(); };
+  const add = async () => { if(!newName.trim()) return; await sb.from(table).insert({ nombre: newName.trim() }); setNewName(''); await reload(); await reloadRef(); };
 
-function activoBadge(activo){
-  return activo
-    ? `background:var(--accent-bg);color:var(--accent-text);`
-    : `background:var(--neutral-bg);color:var(--neutral-text);`;
-}
-
-function cfgPageSlice(rows){
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  if(STATE.cfgPage > totalPages) STATE.cfgPage = totalPages;
-  const start = (STATE.cfgPage - 1) * PAGE_SIZE;
-  return rows.slice(start, start + PAGE_SIZE);
-}
-
-function changeCfgPage(delta){
-  STATE.cfgPage += delta;
-  renderView();
-}
-
-function cfgSearchBar(){
-  return `<div class="toolbar"><input id="cfg-search-input" placeholder="Buscar por nombre" value="${STATE.cfgSearch}" /></div>`;
-}
-
-function bindCfgSearch(rerenderFn){
-  const si = document.getElementById('cfg-search-input');
-  si.addEventListener('input', () => {
-    STATE.cfgSearch = si.value; STATE.cfgPage = 1;
-    rerenderFn();
-    si.focus(); si.setSelectionRange(si.value.length, si.value.length);
-  });
-}
-
-function renderCfgSimple(c, tabla, allRows, titulo){
-  const q = STATE.cfgSearch.toLowerCase();
-  const filtered = allRows.filter(r => !q || r.nombre.toLowerCase().includes(q));
-  const rows = cfgPageSlice(filtered);
-  c.innerHTML = `
-    <h1 class="page-title">${titulo}</h1>
-    <p class="page-sub">No se pueden eliminar porque están vinculados a órdenes existentes — se activan o desactivan.</p>
-    ${cfgSearchBar()}
-    <div class="grid-head" style="grid-template-columns:1fr 110px 130px;"><span>Nombre</span><span>Estado</span><span></span></div>
-    ${rows.length === 0 ? `<p style="color:var(--text-2);">Sin resultados.</p>` : ''}
-    ${rows.map(r => `
-      <div class="grid-row" style="grid-template-columns:1fr 110px 130px;">
-        <input value="${r.nombre.replace(/"/g,'&quot;')}" onchange="actualizarCampo('${tabla}','${r.id}','nombre',this.value)" />
-        <span class="badge" style="${activoBadge(r.activo)}">${r.activo ? 'Activo' : 'Inactivo'}</span>
-        <button class="small toggle-badge" onclick="toggleActivo('${tabla}','${r.id}',${r.activo})">${r.activo ? 'Desactivar' : 'Activar'}</button>
+  return html`
+    <div>
+      <h1 class="text-xl font-bold mb-1">${title}</h1>
+      <p class="text-sm text-muted-foreground mb-5">No se pueden eliminar porque están vinculados a órdenes existentes — se activan o desactivan.</p>
+      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} />
+      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'1fr 110px 130px'}}>
+        <span>Nombre</span><span>Estado</span><span></span>
       </div>
-    `).join('')}
-    ${paginationHtml(STATE.cfgPage, filtered.length, 'changeCfgPage(-1)', 'changeCfgPage(1)')}
-    <div class="grid-row" style="grid-template-columns:1fr 130px;margin-top:16px;background:none;border-style:dashed;">
-      <input id="new-cfg-nombre" placeholder="Nombre nuevo" />
-      <button class="primary" onclick="agregarSimple('${tabla}')">${ICONS.plus} Agregar</button>
+      ${list.length === 0 ? html`<p class="text-sm text-muted-foreground">Sin resultados.</p>` : null}
+      ${list.map(r => html`
+        <div key=${r.id} class="grid gap-2.5 items-center px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'1fr 110px 130px'}}>
+          <${Input} className="border-transparent bg-transparent shadow-none h-8" defaultValue=${r.nombre} onBlur=${e => e.target.value !== r.nombre && save(r.id, e.target.value)} />
+          <${Badge} variant=${r.activo ? 'success' : 'default'}>${r.activo ? 'Activo' : 'Inactivo'}<//>
+          <${Button} size="sm" variant="outline" onClick=${() => toggle(r.id, r.activo)}>${r.activo ? 'Desactivar' : 'Activar'}<//>
+        </div>
+      `)}
+      <${Pagination} page=${pageClamped} total=${filtered.length} pageSize=${PAGE_SIZE} onChange=${setPage} />
+      <div class="grid gap-2.5 items-center px-3.5 py-2.5 border border-dashed border-border rounded-md mt-4" style=${{gridTemplateColumns:'1fr 130px'}}>
+        <${Input} placeholder="Nombre nuevo" value=${newName} onChange=${e => setNewName(e.target.value)} />
+        <${Button} onClick=${add}>${Icon('plus')} Agregar<//>
+      </div>
     </div>
   `;
-  bindCfgSearch(() => renderCfgSimple(c, tabla, allRows, titulo));
 }
 
-function renderCfgEstadosAdmin(c){
-  const q = STATE.cfgSearch.toLowerCase();
-  const filtered = STATE.cfgEstadosAdmin.filter(e => !q || e.nombre.toLowerCase().includes(q));
-  const rows = cfgPageSlice(filtered);
-  c.innerHTML = `
-    <h1 class="page-title">Estados administrativos</h1>
-    <p class="page-sub">Definen el flujo administrativo y el mensaje de WhatsApp que se arma para cada uno.</p>
-    ${cfgSearchBar()}
-    <div class="grid-head" style="grid-template-columns:160px 1fr 110px 130px;"><span>Nombre</span><span>Mensaje WhatsApp</span><span>Estado</span><span></span></div>
-    ${rows.length === 0 ? `<p style="color:var(--text-2);">Sin resultados.</p>` : ''}
-    ${rows.map(e => `
-      <div class="grid-row" style="grid-template-columns:160px 1fr 110px 130px;align-items:start;">
-        <input value="${e.nombre.replace(/"/g,'&quot;')}" onchange="actualizarCampo('estados_admin','${e.id}','nombre',this.value)" />
-        <textarea rows="2" style="font-size:12px;" onchange="actualizarCampo('estados_admin','${e.id}','mensaje_whatsapp',this.value)">${e.mensaje_whatsapp||''}</textarea>
-        <span class="badge" style="${activoBadge(e.activo)}">${e.activo ? 'Activo' : 'Inactivo'}</span>
-        <button class="small toggle-badge" onclick="toggleActivo('estados_admin','${e.id}',${e.activo})">${e.activo ? 'Desactivar' : 'Activar'}</button>
+function ConfigEstadosAdmin({ reloadRef }){
+  const [rows, reload] = useCfgRows('estados_admin');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [newName, setNewName] = useState('');
+
+  const filtered = rows.filter(r => !search || r.nombre.toLowerCase().includes(search.toLowerCase()));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageClamped = Math.min(page, totalPages);
+  const list = filtered.slice((pageClamped-1)*PAGE_SIZE, pageClamped*PAGE_SIZE);
+
+  const saveField = async (id, field, value) => { await sb.from('estados_admin').update({ [field]: value }).eq('id', id); await reload(); await reloadRef(); };
+  const toggle = async (id, activo) => { await sb.from('estados_admin').update({ activo: !activo }).eq('id', id); await reload(); await reloadRef(); };
+  const add = async () => { if(!newName.trim()) return; await sb.from('estados_admin').insert({ nombre: newName.trim() }); setNewName(''); await reload(); await reloadRef(); };
+
+  return html`
+    <div>
+      <h1 class="text-xl font-bold mb-1">Estados administrativos</h1>
+      <p class="text-sm text-muted-foreground mb-5">Definen el flujo administrativo y el mensaje de WhatsApp que se arma para cada uno.</p>
+      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} />
+      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'160px 1fr 110px 130px'}}>
+        <span>Nombre</span><span>Mensaje WhatsApp</span><span>Estado</span><span></span>
       </div>
-    `).join('')}
-    ${paginationHtml(STATE.cfgPage, filtered.length, 'changeCfgPage(-1)', 'changeCfgPage(1)')}
-    <div class="grid-row" style="grid-template-columns:1fr 130px;margin-top:16px;background:none;border-style:dashed;">
-      <input id="new-cfg-nombre" placeholder="Nombre del nuevo estado" />
-      <button class="primary" onclick="agregarSimple('estados_admin')">${ICONS.plus} Agregar</button>
+      ${list.length === 0 ? html`<p class="text-sm text-muted-foreground">Sin resultados.</p>` : null}
+      ${list.map(e => html`
+        <div key=${e.id} class="grid gap-2.5 items-start px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'160px 1fr 110px 130px'}}>
+          <${Input} className="border-transparent bg-transparent shadow-none h-8" defaultValue=${e.nombre} onBlur=${ev => ev.target.value !== e.nombre && saveField(e.id, 'nombre', ev.target.value)} />
+          <${Textarea} className="border-transparent bg-transparent shadow-none text-xs" rows="2" defaultValue=${e.mensaje_whatsapp||''} onBlur=${ev => ev.target.value !== (e.mensaje_whatsapp||'') && saveField(e.id, 'mensaje_whatsapp', ev.target.value)} />
+          <${Badge} variant=${e.activo ? 'success' : 'default'}>${e.activo ? 'Activo' : 'Inactivo'}<//>
+          <${Button} size="sm" variant="outline" onClick=${() => toggle(e.id, e.activo)}>${e.activo ? 'Desactivar' : 'Activar'}<//>
+        </div>
+      `)}
+      <${Pagination} page=${pageClamped} total=${filtered.length} pageSize=${PAGE_SIZE} onChange=${setPage} />
+      <div class="grid gap-2.5 items-center px-3.5 py-2.5 border border-dashed border-border rounded-md mt-4" style=${{gridTemplateColumns:'1fr 130px'}}>
+        <${Input} placeholder="Nombre del nuevo estado" value=${newName} onChange=${e => setNewName(e.target.value)} />
+        <${Button} onClick=${add}>${Icon('plus')} Agregar<//>
+      </div>
     </div>
   `;
-  bindCfgSearch(() => renderCfgEstadosAdmin(c));
 }
 
-function renderCfgEstadosTecnicos(c){
-  const q = STATE.cfgSearch.toLowerCase();
-  const filtered = STATE.cfgEstadosTecnicos.filter(e => !q || e.nombre.toLowerCase().includes(q));
-  const rows = cfgPageSlice(filtered);
-  c.innerHTML = `
-    <h1 class="page-title">Estados técnicos</h1>
-    <p class="page-sub">Podés hacer que un estado técnico dispare automáticamente un estado administrativo.</p>
-    ${cfgSearchBar()}
-    <div class="grid-head" style="grid-template-columns:160px 1fr 110px 130px;"><span>Nombre</span><span>Dispara en admin</span><span>Estado</span><span></span></div>
-    ${rows.length === 0 ? `<p style="color:var(--text-2);">Sin resultados.</p>` : ''}
-    ${rows.map(e => `
-      <div class="grid-row" style="grid-template-columns:160px 1fr 110px 130px;">
-        <input value="${e.nombre.replace(/"/g,'&quot;')}" onchange="actualizarCampo('estados_tecnicos','${e.id}','nombre',this.value)" />
-        <select onchange="actualizarCampo('estados_tecnicos','${e.id}','dispara_estado_admin_id',this.value || null)">
-          <option value="">Ninguno</option>
-          ${STATE.cfgEstadosAdmin.map(a=>`<option value="${a.id}" ${a.id===e.dispara_estado_admin_id?'selected':''}>${a.nombre}</option>`).join('')}
-        </select>
-        <span class="badge" style="${activoBadge(e.activo)}">${e.activo ? 'Activo' : 'Inactivo'}</span>
-        <button class="small toggle-badge" onclick="toggleActivo('estados_tecnicos','${e.id}',${e.activo})">${e.activo ? 'Desactivar' : 'Activar'}</button>
+function ConfigEstadosTecnicos({ appData, reloadRef }){
+  const [rows, reload] = useCfgRows('estados_tecnicos');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [newName, setNewName] = useState('');
+
+  const filtered = rows.filter(r => !search || r.nombre.toLowerCase().includes(search.toLowerCase()));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageClamped = Math.min(page, totalPages);
+  const list = filtered.slice((pageClamped-1)*PAGE_SIZE, pageClamped*PAGE_SIZE);
+
+  const [estadosAdminAll, setEstadosAdminAll] = useState([]);
+  useEffect(() => { sb.from('estados_admin').select('*').order('orden').then(({data}) => setEstadosAdminAll(data||[])); }, []);
+
+  const saveField = async (id, field, value) => { await sb.from('estados_tecnicos').update({ [field]: value }).eq('id', id); await reload(); await reloadRef(); };
+  const toggle = async (id, activo) => { await sb.from('estados_tecnicos').update({ activo: !activo }).eq('id', id); await reload(); await reloadRef(); };
+  const add = async () => { if(!newName.trim()) return; await sb.from('estados_tecnicos').insert({ nombre: newName.trim() }); setNewName(''); await reload(); await reloadRef(); };
+
+  return html`
+    <div>
+      <h1 class="text-xl font-bold mb-1">Estados técnicos</h1>
+      <p class="text-sm text-muted-foreground mb-5">Podés hacer que un estado técnico dispare automáticamente un estado administrativo.</p>
+      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} />
+      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'160px 1fr 110px 130px'}}>
+        <span>Nombre</span><span>Dispara en admin</span><span>Estado</span><span></span>
       </div>
-    `).join('')}
-    ${paginationHtml(STATE.cfgPage, filtered.length, 'changeCfgPage(-1)', 'changeCfgPage(1)')}
-    <div class="grid-row" style="grid-template-columns:1fr 130px;margin-top:16px;background:none;border-style:dashed;">
-      <input id="new-cfg-nombre" placeholder="Nombre del nuevo estado" />
-      <button class="primary" onclick="agregarSimple('estados_tecnicos')">${ICONS.plus} Agregar</button>
+      ${list.length === 0 ? html`<p class="text-sm text-muted-foreground">Sin resultados.</p>` : null}
+      ${list.map(e => html`
+        <div key=${e.id} class="grid gap-2.5 items-center px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'160px 1fr 110px 130px'}}>
+          <${Input} className="border-transparent bg-transparent shadow-none h-8" defaultValue=${e.nombre} onBlur=${ev => ev.target.value !== e.nombre && saveField(e.id, 'nombre', ev.target.value)} />
+          <${Select} defaultValue=${e.dispara_estado_admin_id || ''} onChange=${ev => saveField(e.id, 'dispara_estado_admin_id', ev.target.value || null)}>
+            <option value="">Ninguno</option>
+            ${estadosAdminAll.map(a => html`<option key=${a.id} value=${a.id}>${a.nombre}</option>`)}
+          <//>
+          <${Badge} variant=${e.activo ? 'success' : 'default'}>${e.activo ? 'Activo' : 'Inactivo'}<//>
+          <${Button} size="sm" variant="outline" onClick=${() => toggle(e.id, e.activo)}>${e.activo ? 'Desactivar' : 'Activar'}<//>
+        </div>
+      `)}
+      <${Pagination} page=${pageClamped} total=${filtered.length} pageSize=${PAGE_SIZE} onChange=${setPage} />
+      <div class="grid gap-2.5 items-center px-3.5 py-2.5 border border-dashed border-border rounded-md mt-4" style=${{gridTemplateColumns:'1fr 130px'}}>
+        <${Input} placeholder="Nombre del nuevo estado" value=${newName} onChange=${e => setNewName(e.target.value)} />
+        <${Button} onClick=${add}>${Icon('plus')} Agregar<//>
+      </div>
     </div>
   `;
-  bindCfgSearch(() => renderCfgEstadosTecnicos(c));
 }
 
-async function agregarSimple(tabla){
-  const input = document.getElementById('new-cfg-nombre');
-  const val = input.value.trim();
-  if(!val) return;
-  await sb.from(tabla).insert({ nombre: val });
-  await loadCfgAll();
-  await loadRefData();
-  render();
+// ---------- App ----------
+
+function App(){
+  const [session, setSession] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [view, setView] = useState('panel');
+  const [detailId, setDetailId] = useState(null);
+  const [configOpen, setConfigOpen] = useState(true);
+  const [newOrderOpen, setNewOrderOpen] = useState(false);
+  const { data: appData, loading, reloadOrdenes, reloadRef } = useAppData(session);
+
+  useEffect(() => {
+    sb.auth.getSession().then(({ data }) => { setSession(data.session); setCheckingSession(false); });
+  }, []);
+
+  const goDetail = (id) => { setDetailId(id); setView('detail'); };
+  const goView = (v) => { setView(v); if(v !== 'detail') setDetailId(null); };
+  const logout = async () => { await sb.auth.signOut(); setSession(null); };
+
+  if(checkingSession) return null;
+  if(!session) return html`<${Login} onLoggedIn=${setSession} />`;
+  if(loading || !appData.profile) return html`<div class="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Cargando…</div>`;
+
+  return html`
+    <div class="flex min-h-screen">
+      <${Sidebar} view=${view} setView=${goView} profile=${appData.profile} configOpen=${configOpen} setConfigOpen=${setConfigOpen} onLogout=${logout} />
+      <div class="flex-1 p-7 md:p-8 max-w-full">
+        ${view === 'panel' ? html`<${OrdenesList} withMetrics=${true} appData=${appData} reloadOrdenes=${reloadOrdenes} openNewOrder=${() => setNewOrderOpen(true)} goDetail=${goDetail} />` : null}
+        ${view === 'ordenes' ? html`<${OrdenesList} withMetrics=${false} appData=${appData} reloadOrdenes=${reloadOrdenes} openNewOrder=${() => setNewOrderOpen(true)} goDetail=${goDetail} />` : null}
+        ${view === 'detail' ? html`<${OrderDetail} orderId=${detailId} appData=${appData} session=${session} reloadOrdenes=${reloadOrdenes} goBack=${() => goView('ordenes')} />` : null}
+        ${view === 'cfg-tipos' ? html`<${ConfigSimple} table="tipos_equipo" title="Tipos de equipo" reloadRef=${reloadRef} />` : null}
+        ${view === 'cfg-marcas' ? html`<${ConfigSimple} table="marcas" title="Marcas" reloadRef=${reloadRef} />` : null}
+        ${view === 'cfg-eadmin' ? html`<${ConfigEstadosAdmin} reloadRef=${reloadRef} />` : null}
+        ${view === 'cfg-etec' ? html`<${ConfigEstadosTecnicos} appData=${appData} reloadRef=${reloadRef} />` : null}
+      </div>
+      <${NewOrderDialog} open=${newOrderOpen} onOpenChange=${setNewOrderOpen} appData=${appData} reloadOrdenes=${reloadOrdenes} session=${session} goDetail=${goDetail} />
+    </div>
+  `;
 }
 
-async function actualizarCampo(tabla, id, campo, valor){
-  await sb.from(tabla).update({ [campo]: valor }).eq('id', id);
-  await loadCfgAll();
-  await loadRefData();
-}
-
-async function toggleActivo(tabla, id, activoActual){
-  await sb.from(tabla).update({ activo: !activoActual }).eq('id', id);
-  await loadCfgAll();
-  await loadRefData();
-  render();
-}
-
-// ---------- INIT ----------
-
-(async function init(){
-  const { data } = await sb.auth.getSession();
-  if(data.session){
-    STATE.session = data.session;
-    await loadProfile(data.session.user.id);
-    await loadRefData();
-    await loadOrdenes();
-  }
-  render();
-})();
+createRoot(document.getElementById('root')).render(html`<${App} />`);
 </script>
 </body>
 </html>
