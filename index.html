@@ -131,6 +131,16 @@ function Badge({ variant='default', className='', children }){
   return html`<span class=${cn('inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap', variants[variant], className)}>${children}</span>`;
 }
 
+function Switch({ checked, onChange }){
+  return html`
+    <button type="button" role="switch" aria-checked=${checked}
+      class=${cn('inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors border border-transparent', checked ? 'bg-primary' : 'bg-input')}
+      onClick=${() => onChange(!checked)}>
+      <span class=${cn('inline-block h-4 w-4 rounded-full bg-background shadow transform transition-transform', checked ? 'translate-x-4' : 'translate-x-0.5')}></span>
+    <//>
+  `;
+}
+
 function Dialog({ open, onOpenChange, title, description, children }){
   if(!open) return null;
   return html`
@@ -293,7 +303,6 @@ function Sidebar({ view, setView, profile, configOpen, setConfigOpen, onLogout }
     <div class="w-56 shrink-0 bg-[hsl(var(--sidebar))] border-r border-border flex flex-col p-3">
       <div class="flex items-center gap-2 font-bold text-base px-2 pt-2 pb-5"><span class="w-2.5 h-2.5 rounded-sm bg-primary"></span>ReWop</div>
       <${NavItem} target="panel" icon="panel" label="Panel" />
-      <${NavItem} target="ordenes" icon="plus" label="Órdenes de servicio" />
       ${isAdmin ? html`
         <div class=${cn('flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium cursor-pointer mb-0.5',
             inConfig ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}
@@ -350,7 +359,7 @@ function OrdenesList({ withMetrics, appData, reloadOrdenes, openNewOrder, goDeta
       ` : null}
       <div class="flex gap-3 items-center mb-3.5">
         <${Input} className="flex-1" placeholder="Buscar por cualquier campo de la orden (cliente, teléfono, equipo, estado...)" value=${search} onChange=${e => { setSearch(e.target.value); setPage(1); }} />
-        <${Button} className="shrink-0" onClick=${openNewOrder}>${Icon('plus')} Nueva orden<//>
+        <${Button} size="icon" className="shrink-0" title="Nueva orden" onClick=${openNewOrder}>${Icon('plus')}<//>
       </div>
       <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'56px 1fr 150px 150px 20px'}}>
         <span>#</span><span>Cliente / equipo</span><span>Admin</span><span>Técnico</span><span></span>
@@ -395,7 +404,7 @@ function NewOrderDialog({ open, onOpenChange, appData, reloadOrdenes, session, g
       tipo_equipo_id: form.tipo, marca_id: form.marca,
       modelo: form.modelo || null, numero_serie: form.serie || null,
       accesorios: form.accesorios || null, observaciones: form.obs || null,
-      estado_admin_id: estadoAdminInicial, estado_tecnico_id: estadoTecInicial,
+      estado_admin_id: estadoAdminInitial, estado_tecnico_id: estadoTecInicial,
       usuario_recepciono_id: session.user.id,
     };
     const { data, error } = await sb.from('ordenes').insert(payload).select().single();
@@ -483,7 +492,7 @@ function OrderDetail({ orderId, appData, session, reloadOrdenes, goBack }){
 
   return html`
     <div>
-      <div class="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer w-fit mb-3.5 hover:text-foreground" onClick=${goBack}>${Icon('chevronLeft')}<span>Volver a órdenes</span></div>
+      <div class="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer w-fit mb-3.5 hover:text-foreground" onClick=${goBack}>${Icon('chevronLeft')}<span>Volver al panel</span></div>
       <h1 class="text-xl font-bold font-mono mb-1">Orden #${o.numero}</h1>
       <p class="text-sm text-muted-foreground mb-5">${o.cliente_nombre} · ${o.cliente_telefono}</p>
 
@@ -582,8 +591,14 @@ function useCfgRows(table, extraSelect=''){
   return [rows, reload];
 }
 
-function ConfigToolbar({ search, setSearch }){
-  return html`<div class="flex gap-3 mb-3.5"><${Input} className="flex-1" placeholder="Buscar por nombre" value=${search} onChange=${e => setSearch(e.target.value)} /></div>`;
+function ConfigToolbar({ search, setSearch, newName, setNewName, onAdd, addPlaceholder='Nombre nuevo' }){
+  return html`
+    <div class="flex gap-3 mb-3.5 items-center">
+      <${Input} className="flex-1" placeholder="Buscar por nombre" value=${search} onChange=${e => setSearch(e.target.value)} />
+      <${Input} className="w-48 shrink-0" placeholder=${addPlaceholder} value=${newName} onChange=${e => setNewName(e.target.value)} />
+      <${Button} size="icon" className="shrink-0" title="Agregar" onClick=${onAdd}>${Icon('plus')}<//>
+    </div>
+  `;
 }
 
 function ConfigSimple({ table, title, reloadRef }){
@@ -605,23 +620,18 @@ function ConfigSimple({ table, title, reloadRef }){
     <div>
       <h1 class="text-xl font-bold mb-1">${title}</h1>
       <p class="text-sm text-muted-foreground mb-5">No se pueden eliminar porque están vinculados a órdenes existentes — se activan o desactivan.</p>
-      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} />
-      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'1fr 110px 130px'}}>
-        <span>Nombre</span><span>Estado</span><span></span>
+      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} newName=${newName} setNewName=${setNewName} onAdd=${add} />
+      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'1fr 60px'}}>
+        <span>Nombre</span><span>Activo</span>
       </div>
       ${list.length === 0 ? html`<p class="text-sm text-muted-foreground">Sin resultados.</p>` : null}
       ${list.map(r => html`
-        <div key=${r.id} class="grid gap-2.5 items-center px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'1fr 110px 130px'}}>
+        <div key=${r.id} class="grid gap-2.5 items-center px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'1fr 60px'}}>
           <${Input} className="border-transparent bg-transparent shadow-none h-8" defaultValue=${r.nombre} onBlur=${e => e.target.value !== r.nombre && save(r.id, e.target.value)} />
-          <${Badge} variant=${r.activo ? 'success' : 'default'}>${r.activo ? 'Activo' : 'Inactivo'}<//>
-          <${Button} size="sm" variant="outline" onClick=${() => toggle(r.id, r.activo)}>${r.activo ? 'Desactivar' : 'Activar'}<//>
+          <${Switch} checked=${r.activo} onChange=${() => toggle(r.id, r.activo)} />
         </div>
       `)}
       <${Pagination} page=${pageClamped} total=${filtered.length} pageSize=${PAGE_SIZE} onChange=${setPage} />
-      <div class="grid gap-2.5 items-center px-3.5 py-2.5 border border-dashed border-border rounded-md mt-4" style=${{gridTemplateColumns:'1fr 130px'}}>
-        <${Input} placeholder="Nombre nuevo" value=${newName} onChange=${e => setNewName(e.target.value)} />
-        <${Button} onClick=${add}>${Icon('plus')} Agregar<//>
-      </div>
     </div>
   `;
 }
@@ -645,24 +655,19 @@ function ConfigEstadosAdmin({ reloadRef }){
     <div>
       <h1 class="text-xl font-bold mb-1">Estados administrativos</h1>
       <p class="text-sm text-muted-foreground mb-5">Definen el flujo administrativo y el mensaje de WhatsApp que se arma para cada uno.</p>
-      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} />
-      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'160px 1fr 110px 130px'}}>
-        <span>Nombre</span><span>Mensaje WhatsApp</span><span>Estado</span><span></span>
+      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} newName=${newName} setNewName=${setNewName} onAdd=${add} addPlaceholder="Nombre del nuevo estado" />
+      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'160px 1fr 60px'}}>
+        <span>Nombre</span><span>Mensaje WhatsApp</span><span>Activo</span>
       </div>
       ${list.length === 0 ? html`<p class="text-sm text-muted-foreground">Sin resultados.</p>` : null}
       ${list.map(e => html`
-        <div key=${e.id} class="grid gap-2.5 items-start px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'160px 1fr 110px 130px'}}>
+        <div key=${e.id} class="grid gap-2.5 items-start px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'160px 1fr 60px'}}>
           <${Input} className="border-transparent bg-transparent shadow-none h-8" defaultValue=${e.nombre} onBlur=${ev => ev.target.value !== e.nombre && saveField(e.id, 'nombre', ev.target.value)} />
           <${Textarea} className="border-transparent bg-transparent shadow-none text-xs" rows="2" defaultValue=${e.mensaje_whatsapp||''} onBlur=${ev => ev.target.value !== (e.mensaje_whatsapp||'') && saveField(e.id, 'mensaje_whatsapp', ev.target.value)} />
-          <${Badge} variant=${e.activo ? 'success' : 'default'}>${e.activo ? 'Activo' : 'Inactivo'}<//>
-          <${Button} size="sm" variant="outline" onClick=${() => toggle(e.id, e.activo)}>${e.activo ? 'Desactivar' : 'Activar'}<//>
+          <${Switch} checked=${e.activo} onChange=${() => toggle(e.id, e.activo)} />
         </div>
       `)}
       <${Pagination} page=${pageClamped} total=${filtered.length} pageSize=${PAGE_SIZE} onChange=${setPage} />
-      <div class="grid gap-2.5 items-center px-3.5 py-2.5 border border-dashed border-border rounded-md mt-4" style=${{gridTemplateColumns:'1fr 130px'}}>
-        <${Input} placeholder="Nombre del nuevo estado" value=${newName} onChange=${e => setNewName(e.target.value)} />
-        <${Button} onClick=${add}>${Icon('plus')} Agregar<//>
-      </div>
     </div>
   `;
 }
@@ -689,27 +694,22 @@ function ConfigEstadosTecnicos({ appData, reloadRef }){
     <div>
       <h1 class="text-xl font-bold mb-1">Estados técnicos</h1>
       <p class="text-sm text-muted-foreground mb-5">Podés hacer que un estado técnico dispare automáticamente un estado administrativo.</p>
-      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} />
-      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'160px 1fr 110px 130px'}}>
-        <span>Nombre</span><span>Dispara en admin</span><span>Estado</span><span></span>
+      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} newName=${newName} setNewName=${setNewName} onAdd=${add} addPlaceholder="Nombre del nuevo estado" />
+      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'160px 1fr 60px'}}>
+        <span>Nombre</span><span>Dispara en admin</span><span>Activo</span>
       </div>
       ${list.length === 0 ? html`<p class="text-sm text-muted-foreground">Sin resultados.</p>` : null}
       ${list.map(e => html`
-        <div key=${e.id} class="grid gap-2.5 items-center px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'160px 1fr 110px 130px'}}>
+        <div key=${e.id} class="grid gap-2.5 items-center px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'160px 1fr 60px'}}>
           <${Input} className="border-transparent bg-transparent shadow-none h-8" defaultValue=${e.nombre} onBlur=${ev => ev.target.value !== e.nombre && saveField(e.id, 'nombre', ev.target.value)} />
           <${Select} defaultValue=${e.dispara_estado_admin_id || ''} onChange=${ev => saveField(e.id, 'dispara_estado_admin_id', ev.target.value || null)}>
             <option value="">Ninguno</option>
             ${estadosAdminAll.map(a => html`<option key=${a.id} value=${a.id}>${a.nombre}</option>`)}
           <//>
-          <${Badge} variant=${e.activo ? 'success' : 'default'}>${e.activo ? 'Activo' : 'Inactivo'}<//>
-          <${Button} size="sm" variant="outline" onClick=${() => toggle(e.id, e.activo)}>${e.activo ? 'Desactivar' : 'Activar'}<//>
+          <${Switch} checked=${e.activo} onChange=${() => toggle(e.id, e.activo)} />
         </div>
       `)}
       <${Pagination} page=${pageClamped} total=${filtered.length} pageSize=${PAGE_SIZE} onChange=${setPage} />
-      <div class="grid gap-2.5 items-center px-3.5 py-2.5 border border-dashed border-border rounded-md mt-4" style=${{gridTemplateColumns:'1fr 130px'}}>
-        <${Input} placeholder="Nombre del nuevo estado" value=${newName} onChange=${e => setNewName(e.target.value)} />
-        <${Button} onClick=${add}>${Icon('plus')} Agregar<//>
-      </div>
     </div>
   `;
 }
@@ -738,12 +738,11 @@ function App(){
   if(loading || !appData.profile) return html`<div class="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Cargando…</div>`;
 
   return html`
-    <div class="flex min-h-screen">
+    <div class="flex h-screen overflow-hidden">
       <${Sidebar} view=${view} setView=${goView} profile=${appData.profile} configOpen=${configOpen} setConfigOpen=${setConfigOpen} onLogout=${logout} />
-      <div class="flex-1 p-7 md:p-8 max-w-full">
+      <div class="flex-1 p-7 md:p-8 max-w-full overflow-y-auto">
         ${view === 'panel' ? html`<${OrdenesList} withMetrics=${true} appData=${appData} reloadOrdenes=${reloadOrdenes} openNewOrder=${() => setNewOrderOpen(true)} goDetail=${goDetail} />` : null}
-        ${view === 'ordenes' ? html`<${OrdenesList} withMetrics=${false} appData=${appData} reloadOrdenes=${reloadOrdenes} openNewOrder=${() => setNewOrderOpen(true)} goDetail=${goDetail} />` : null}
-        ${view === 'detail' ? html`<${OrderDetail} orderId=${detailId} appData=${appData} session=${session} reloadOrdenes=${reloadOrdenes} goBack=${() => goView('ordenes')} />` : null}
+        ${view === 'detail' ? html`<${OrderDetail} orderId=${detailId} appData=${appData} session=${session} reloadOrdenes=${reloadOrdenes} goBack=${() => goView('panel')} />` : null}
         ${view === 'cfg-tipos' ? html`<${ConfigSimple} table="tipos_equipo" title="Tipos de equipo" reloadRef=${reloadRef} />` : null}
         ${view === 'cfg-marcas' ? html`<${ConfigSimple} table="marcas" title="Marcas" reloadRef=${reloadRef} />` : null}
         ${view === 'cfg-eadmin' ? html`<${ConfigEstadosAdmin} reloadRef=${reloadRef} />` : null}
