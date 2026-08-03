@@ -157,6 +157,30 @@ function Dialog({ open, onOpenChange, title, description, children }){
   `;
 }
 
+function NewItemDialog({ open, onOpenChange, title, label, placeholder, onSubmit }){
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { if(open) setValue(''); }, [open]);
+
+  const submit = async () => {
+    if(!value.trim() || saving) return;
+    setSaving(true);
+    await onSubmit(value.trim());
+    setSaving(false);
+    onOpenChange(false);
+  };
+
+  return html`
+    <${Dialog} open=${open} onOpenChange=${onOpenChange} title=${title}>
+      <div class="mb-4">
+        <${Label}>${label}<//>
+        <${Input} placeholder=${placeholder} value=${value} onChange=${e => setValue(e.target.value)} onKeyDown=${e => { if(e.key === 'Enter') submit(); }} />
+      </div>
+      <${Button} className="w-full" disabled=${!value.trim() || saving} onClick=${submit}>Guardar<//>
+    <//>
+  `;
+}
+
 function Pagination({ page, total, pageSize, onChange }){
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return html`
@@ -403,7 +427,7 @@ function NewOrderDialog({ open, onOpenChange, appData, reloadOrdenes, session, g
 
   const submit = async () => {
     if(!form.nombre.trim() || !form.tel.trim() || !form.trabajo.trim()){ setErr('Completá nombre, teléfono y trabajo.'); return; }
-    const estadoAdminInitial = appData.estadosAdmin[0]?.id;
+    const estadoAdminInicial = appData.estadosAdmin[0]?.id;
     const estadoTecInicial = appData.estadosTecnicos[0]?.id;
     const payload = {
       cliente_nombre: form.nombre.trim(), cliente_telefono: form.tel.trim(), trabajo: form.trabajo.trim(),
@@ -416,7 +440,7 @@ function NewOrderDialog({ open, onOpenChange, appData, reloadOrdenes, session, g
     const { data, error } = await sb.from('ordenes').insert(payload).select().single();
     if(error){ setErr('No se pudo crear la orden.'); console.error(error); return; }
     await sb.from('historial_estados').insert([
-      { orden_id: data.id, tipo_flujo:'admin', estado_admin_id: estadoAdminInitial, usuario_id: session.user.id },
+      { orden_id: data.id, tipo_flujo:'admin', estado_admin_id: estadoAdminInicial, usuario_id: session.user.id },
       { orden_id: data.id, tipo_flujo:'tecnico', estado_tecnico_id: estadoTecInicial, usuario_id: session.user.id },
     ]);
     await reloadOrdenes();
@@ -603,21 +627,20 @@ function useCfgRows(table, extraSelect=''){
   return [rows, reload];
 }
 
-function ConfigToolbar({ search, setSearch, newName, setNewName, onAdd, addPlaceholder='Nombre nuevo' }){
+function ConfigToolbar({ search, setSearch, onOpenAdd, addLabel }){
   return html`
     <div class="flex gap-3 mb-3.5 items-center">
       <${Input} className="flex-1" placeholder="Buscar por nombre" value=${search} onChange=${e => setSearch(e.target.value)} />
-      <${Input} className="w-48 shrink-0" placeholder=${addPlaceholder} value=${newName} onChange=${e => setNewName(e.target.value)} />
-      <${Button} size="icon" className="shrink-0" title="Agregar" onClick=${onAdd}>${Icon('plus')}<//>
+      <${Button} className="shrink-0" onClick=${onOpenAdd}>${Icon('plus')} ${addLabel}<//>
     </div>
   `;
 }
 
-function ConfigSimple({ table, title, reloadRef }){
+function ConfigSimple({ table, title, addLabel, itemLabel, reloadRef }){
   const [rows, reload] = useCfgRows(table);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [newName, setNewName] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
 
   const filtered = rows.filter(r => !search || r.nombre.toLowerCase().includes(search.toLowerCase()));
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -626,13 +649,13 @@ function ConfigSimple({ table, title, reloadRef }){
 
   const save = async (id, nombre) => { await sb.from(table).update({ nombre }).eq('id', id); await reload(); await reloadRef(); };
   const toggle = async (id, activo) => { await sb.from(table).update({ activo: !activo }).eq('id', id); await reload(); await reloadRef(); };
-  const add = async () => { if(!newName.trim()) return; await sb.from(table).insert({ nombre: newName.trim() }); setNewName(''); await reload(); await reloadRef(); };
+  const add = async (nombre) => { await sb.from(table).insert({ nombre }); await reload(); await reloadRef(); };
 
   return html`
     <div>
       <h1 class="text-xl font-bold mb-1">${title}</h1>
       <p class="text-sm text-muted-foreground mb-5">No se pueden eliminar porque están vinculados a órdenes existentes — se activan o desactivan.</p>
-      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} newName=${newName} setNewName=${setNewName} onAdd=${add} />
+      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} onOpenAdd=${() => setAddOpen(true)} addLabel=${addLabel} />
       <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'1fr 60px'}}>
         <span>Nombre</span><span>Activo</span>
       </div>
@@ -644,6 +667,7 @@ function ConfigSimple({ table, title, reloadRef }){
         </div>
       `)}
       <${Pagination} page=${pageClamped} total=${filtered.length} pageSize=${PAGE_SIZE} onChange=${setPage} />
+      <${NewItemDialog} open=${addOpen} onOpenChange=${setAddOpen} title=${addLabel} label="Nombre" placeholder=${itemLabel} onSubmit=${add} />
     </div>
   `;
 }
@@ -652,7 +676,7 @@ function ConfigEstadosAdmin({ reloadRef }){
   const [rows, reload] = useCfgRows('estados_admin');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [newName, setNewName] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
 
   const [ubicacionesAll, setUbicacionesAll] = useState([]);
   useEffect(() => { sb.from('ubicaciones').select('*').order('orden').then(({data}) => setUbicacionesAll(data||[])); }, []);
@@ -664,13 +688,13 @@ function ConfigEstadosAdmin({ reloadRef }){
 
   const saveField = async (id, field, value) => { await sb.from('estados_admin').update({ [field]: value }).eq('id', id); await reload(); await reloadRef(); };
   const toggle = async (id, activo) => { await sb.from('estados_admin').update({ activo: !activo }).eq('id', id); await reload(); await reloadRef(); };
-  const add = async () => { if(!newName.trim()) return; await sb.from('estados_admin').insert({ nombre: newName.trim() }); setNewName(''); await reload(); await reloadRef(); };
+  const add = async (nombre) => { await sb.from('estados_admin').insert({ nombre }); await reload(); await reloadRef(); };
 
   return html`
     <div>
       <h1 class="text-xl font-bold mb-1">Estados administrativos</h1>
       <p class="text-sm text-muted-foreground mb-5">Definen el flujo administrativo, el mensaje de WhatsApp y la ubicación que quedan al aplicar cada uno.</p>
-      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} newName=${newName} setNewName=${setNewName} onAdd=${add} addPlaceholder="Nombre del nuevo estado" />
+      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} onOpenAdd=${() => setAddOpen(true)} addLabel="Nuevo estado administrativo" />
       <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'140px 1fr 140px 60px'}}>
         <span>Nombre</span><span>Mensaje WhatsApp</span><span>Ubicación</span><span>Activo</span>
       </div>
@@ -687,6 +711,7 @@ function ConfigEstadosAdmin({ reloadRef }){
         </div>
       `)}
       <${Pagination} page=${pageClamped} total=${filtered.length} pageSize=${PAGE_SIZE} onChange=${setPage} />
+      <${NewItemDialog} open=${addOpen} onOpenChange=${setAddOpen} title="Nuevo estado administrativo" label="Nombre" placeholder="Nombre del estado" onSubmit=${add} />
     </div>
   `;
 }
@@ -695,7 +720,7 @@ function ConfigEstadosTecnicos({ appData, reloadRef }){
   const [rows, reload] = useCfgRows('estados_tecnicos');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [newName, setNewName] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
 
   const filtered = rows.filter(r => !search || r.nombre.toLowerCase().includes(search.toLowerCase()));
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -709,13 +734,13 @@ function ConfigEstadosTecnicos({ appData, reloadRef }){
 
   const saveField = async (id, field, value) => { await sb.from('estados_tecnicos').update({ [field]: value }).eq('id', id); await reload(); await reloadRef(); };
   const toggle = async (id, activo) => { await sb.from('estados_tecnicos').update({ activo: !activo }).eq('id', id); await reload(); await reloadRef(); };
-  const add = async () => { if(!newName.trim()) return; await sb.from('estados_tecnicos').insert({ nombre: newName.trim() }); setNewName(''); await reload(); await reloadRef(); };
+  const add = async (nombre) => { await sb.from('estados_tecnicos').insert({ nombre }); await reload(); await reloadRef(); };
 
   return html`
     <div>
       <h1 class="text-xl font-bold mb-1">Estados técnicos</h1>
       <p class="text-sm text-muted-foreground mb-5">Podés hacer que un estado técnico dispare un estado administrativo y/o deje al equipo en una ubicación.</p>
-      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} newName=${newName} setNewName=${setNewName} onAdd=${add} addPlaceholder="Nombre del nuevo estado" />
+      <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} onOpenAdd=${() => setAddOpen(true)} addLabel="Nuevo estado técnico" />
       <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'140px 1fr 140px 60px'}}>
         <span>Nombre</span><span>Dispara en admin</span><span>Ubicación</span><span>Activo</span>
       </div>
@@ -735,6 +760,7 @@ function ConfigEstadosTecnicos({ appData, reloadRef }){
         </div>
       `)}
       <${Pagination} page=${pageClamped} total=${filtered.length} pageSize=${PAGE_SIZE} onChange=${setPage} />
+      <${NewItemDialog} open=${addOpen} onOpenChange=${setAddOpen} title="Nuevo estado técnico" label="Nombre" placeholder="Nombre del estado" onSubmit=${add} />
     </div>
   `;
 }
@@ -768,9 +794,9 @@ function App(){
       <div class="flex-1 p-7 md:p-8 max-w-full overflow-y-auto">
         ${view === 'panel' ? html`<${OrdenesList} withMetrics=${true} appData=${appData} reloadOrdenes=${reloadOrdenes} openNewOrder=${() => setNewOrderOpen(true)} goDetail=${goDetail} />` : null}
         ${view === 'detail' ? html`<${OrderDetail} orderId=${detailId} appData=${appData} session=${session} reloadOrdenes=${reloadOrdenes} goBack=${() => goView('panel')} />` : null}
-        ${view === 'cfg-tipos' ? html`<${ConfigSimple} table="tipos_equipo" title="Tipos de equipo" reloadRef=${reloadRef} />` : null}
-        ${view === 'cfg-marcas' ? html`<${ConfigSimple} table="marcas" title="Marcas" reloadRef=${reloadRef} />` : null}
-        ${view === 'cfg-ubicaciones' ? html`<${ConfigSimple} table="ubicaciones" title="Ubicaciones" reloadRef=${reloadRef} />` : null}
+        ${view === 'cfg-tipos' ? html`<${ConfigSimple} table="tipos_equipo" title="Tipos de equipo" addLabel="Nuevo tipo de equipo" itemLabel="Nombre del tipo de equipo" reloadRef=${reloadRef} />` : null}
+        ${view === 'cfg-marcas' ? html`<${ConfigSimple} table="marcas" title="Marcas" addLabel="Nueva marca" itemLabel="Nombre de la marca" reloadRef=${reloadRef} />` : null}
+        ${view === 'cfg-ubicaciones' ? html`<${ConfigSimple} table="ubicaciones" title="Ubicaciones" addLabel="Nueva ubicación" itemLabel="Nombre de la ubicación" reloadRef=${reloadRef} />` : null}
         ${view === 'cfg-eadmin' ? html`<${ConfigEstadosAdmin} appData=${appData} reloadRef=${reloadRef} />` : null}
         ${view === 'cfg-etec' ? html`<${ConfigEstadosTecnicos} appData=${appData} reloadRef=${reloadRef} />` : null}
       </div>
