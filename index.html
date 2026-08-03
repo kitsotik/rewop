@@ -203,35 +203,37 @@ function fmtFecha(iso){
 }
 function matchesOrderSearch(o, q){
   if(!q) return true;
-  const hay = [o.cliente_nombre, o.cliente_telefono, o.trabajo, o.modelo, o.numero_serie, o.tipo_equipo?.nombre, o.marca?.nombre, o.estado_admin?.nombre, o.estado_tecnico?.nombre, o.accesorios, o.observaciones, o.tecnico?.full_name, String(o.numero)].filter(Boolean).join(' ').toLowerCase();
+  const hay = [o.cliente_nombre, o.cliente_telefono, o.trabajo, o.modelo, o.numero_serie, o.tipo_equipo?.nombre, o.marca?.nombre, o.estado_admin?.nombre, o.estado_tecnico?.nombre, o.ubicacion_actual?.nombre, o.accesorios, o.observaciones, o.tecnico?.full_name, String(o.numero)].filter(Boolean).join(' ').toLowerCase();
   return hay.includes(q);
 }
 
 // ---------- data hooks ----------
 
 function useAppData(session){
-  const [data, setData] = useState({ profile:null, tiposEquipo:[], marcas:[], estadosAdmin:[], estadosTecnicos:[], tecnicos:[], ordenes:[] });
+  const [data, setData] = useState({ profile:null, tiposEquipo:[], marcas:[], estadosAdmin:[], estadosTecnicos:[], ubicaciones:[], tecnicos:[], ordenes:[] });
   const [loading, setLoading] = useState(true);
 
   const reloadOrdenes = useCallback(async () => {
     const { data: rows, error } = await sb.from('ordenes')
       .select(`*, tipo_equipo:tipos_equipo(nombre), marca:marcas(nombre),
         estado_admin:estados_admin!ordenes_estado_admin_id_fkey(id,nombre,mensaje_whatsapp),
-        estado_tecnico:estados_tecnicos!ordenes_estado_tecnico_id_fkey(id,nombre,mensaje_whatsapp,dispara_estado_admin_id),
+        estado_tecnico:estados_tecnicos!ordenes_estado_tecnico_id_fkey(id,nombre,mensaje_whatsapp,dispara_estado_admin_id,ubicacion_id),
+        ubicacion_actual:ubicaciones!ordenes_ubicacion_actual_id_fkey(id,nombre),
         tecnico:profiles!ordenes_tecnico_id_fkey(full_name)`)
       .order('numero', { ascending:false });
     setData(d => ({ ...d, ordenes: error ? [] : rows }));
   }, []);
 
   const reloadRef = useCallback(async () => {
-    const [te, ma, ea, et, tec] = await Promise.all([
+    const [te, ma, ea, et, ub, tec] = await Promise.all([
       sb.from('tipos_equipo').select('*').eq('activo', true).order('orden'),
       sb.from('marcas').select('*').eq('activo', true).order('orden'),
       sb.from('estados_admin').select('*').eq('activo', true).order('orden'),
       sb.from('estados_tecnicos').select('*').eq('activo', true).order('orden'),
+      sb.from('ubicaciones').select('*').eq('activo', true).order('orden'),
       sb.from('profiles').select('*').eq('role','tecnico').eq('activo', true),
     ]);
-    setData(d => ({ ...d, tiposEquipo: te.data||[], marcas: ma.data||[], estadosAdmin: ea.data||[], estadosTecnicos: et.data||[], tecnicos: tec.data||[] }));
+    setData(d => ({ ...d, tiposEquipo: te.data||[], marcas: ma.data||[], estadosAdmin: ea.data||[], estadosTecnicos: et.data||[], ubicaciones: ub.data||[], tecnicos: tec.data||[] }));
   }, []);
 
   useEffect(() => {
@@ -284,6 +286,7 @@ function Login({ onLoggedIn }){
 const CONFIG_CHILDREN = [
   ['cfg-tipos', 'Tipos de equipo'],
   ['cfg-marcas', 'Marcas'],
+  ['cfg-ubicaciones', 'Ubicaciones'],
   ['cfg-eadmin', 'Estados administrativos'],
   ['cfg-etec', 'Estados técnicos'],
 ];
@@ -361,17 +364,20 @@ function OrdenesList({ withMetrics, appData, reloadOrdenes, openNewOrder, goDeta
         <${Input} className="flex-1" placeholder="Buscar por cualquier campo de la orden (cliente, teléfono, equipo, estado...)" value=${search} onChange=${e => { setSearch(e.target.value); setPage(1); }} />
         <${Button} size="icon" className="shrink-0" title="Nueva orden" onClick=${openNewOrder}>${Icon('plus')}<//>
       </div>
-      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'56px 1fr 150px 150px 20px'}}>
-        <span>#</span><span>Cliente / equipo</span><span>Admin</span><span>Técnico</span><span></span>
+      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'48px 1fr 120px 100px 100px 110px 130px 20px'}}>
+        <span>#</span><span>Nombre</span><span>Teléfono</span><span>Tipo</span><span>Marca</span><span>Modelo</span><span>Ubicación actual</span><span></span>
       </div>
       ${list.length === 0 ? html`<p class="text-muted-foreground text-sm">No se encontraron órdenes.</p>` : null}
       ${list.map(o => html`
         <div key=${o.id} class="grid gap-2.5 items-center px-3.5 py-3 bg-card border border-border rounded-md cursor-pointer mb-2 hover:border-muted-foreground/40"
-          style=${{gridTemplateColumns:'56px 1fr 150px 150px 20px'}} onClick=${() => goDetail(o.id)}>
+          style=${{gridTemplateColumns:'48px 1fr 120px 100px 100px 110px 130px 20px'}} onClick=${() => goDetail(o.id)}>
           <span class="font-mono text-sm">#${o.numero}</span>
-          <span class="text-sm">${o.cliente_nombre} — ${o.tipo_equipo?.nombre||''} ${o.marca?.nombre||''}</span>
-          <${Badge} variant=${badgeVariant(o.estado_admin?.nombre)}>${o.estado_admin?.nombre||'—'}<//>
-          <${Badge} variant=${badgeVariant(o.estado_tecnico?.nombre)}>${o.estado_tecnico?.nombre||'—'}<//>
+          <span class="text-sm">${o.cliente_nombre}</span>
+          <span class="text-sm text-muted-foreground">${o.cliente_telefono||''}</span>
+          <span class="text-sm text-muted-foreground">${o.tipo_equipo?.nombre||'—'}</span>
+          <span class="text-sm text-muted-foreground">${o.marca?.nombre||'—'}</span>
+          <span class="text-sm text-muted-foreground">${o.modelo||'—'}</span>
+          <${Badge} variant="outline">${o.ubicacion_actual?.nombre||'—'}<//>
           <span class="text-muted-foreground">${Icon('chevronRight')}</span>
         </div>
       `)}
@@ -397,20 +403,20 @@ function NewOrderDialog({ open, onOpenChange, appData, reloadOrdenes, session, g
 
   const submit = async () => {
     if(!form.nombre.trim() || !form.tel.trim() || !form.trabajo.trim()){ setErr('Completá nombre, teléfono y trabajo.'); return; }
-    const estadoAdminInicial = appData.estadosAdmin[0]?.id;
+    const estadoAdminInitial = appData.estadosAdmin[0]?.id;
     const estadoTecInicial = appData.estadosTecnicos[0]?.id;
     const payload = {
       cliente_nombre: form.nombre.trim(), cliente_telefono: form.tel.trim(), trabajo: form.trabajo.trim(),
       tipo_equipo_id: form.tipo, marca_id: form.marca,
       modelo: form.modelo || null, numero_serie: form.serie || null,
       accesorios: form.accesorios || null, observaciones: form.obs || null,
-      estado_admin_id: estadoAdminInitial, estado_tecnico_id: estadoTecInicial,
+      estado_admin_id: estadoAdminInicial, estado_tecnico_id: estadoTecInicial,
       usuario_recepciono_id: session.user.id,
     };
     const { data, error } = await sb.from('ordenes').insert(payload).select().single();
     if(error){ setErr('No se pudo crear la orden.'); console.error(error); return; }
     await sb.from('historial_estados').insert([
-      { orden_id: data.id, tipo_flujo:'admin', estado_admin_id: estadoAdminInicial, usuario_id: session.user.id },
+      { orden_id: data.id, tipo_flujo:'admin', estado_admin_id: estadoAdminInitial, usuario_id: session.user.id },
       { orden_id: data.id, tipo_flujo:'tecnico', estado_tecnico_id: estadoTecInicial, usuario_id: session.user.id },
     ]);
     await reloadOrdenes();
@@ -468,12 +474,16 @@ function OrderDetail({ orderId, appData, session, reloadOrdenes, goBack }){
     if(!actSel) return;
     const [tipo, estadoId] = actSel.split(':');
     if(tipo === 'admin'){
-      await sb.from('ordenes').update({ estado_admin_id: estadoId, updated_at: new Date().toISOString() }).eq('id', orderId);
+      const estado = appData.estadosAdmin.find(e => e.id === estadoId);
+      const updates = { estado_admin_id: estadoId, updated_at: new Date().toISOString() };
+      if(estado?.ubicacion_id) updates.ubicacion_actual_id = estado.ubicacion_id;
+      await sb.from('ordenes').update(updates).eq('id', orderId);
       await sb.from('historial_estados').insert({ orden_id: orderId, tipo_flujo:'admin', estado_admin_id: estadoId, usuario_id: session.user.id });
     } else {
       const estado = appData.estadosTecnicos.find(e => e.id === estadoId);
       const updates = { estado_tecnico_id: estadoId, updated_at: new Date().toISOString() };
       if(estado?.dispara_estado_admin_id) updates.estado_admin_id = estado.dispara_estado_admin_id;
+      if(estado?.ubicacion_id) updates.ubicacion_actual_id = estado.ubicacion_id;
       await sb.from('ordenes').update(updates).eq('id', orderId);
       const inserts = [{ orden_id: orderId, tipo_flujo:'tecnico', estado_tecnico_id: estadoId, usuario_id: session.user.id }];
       if(estado?.dispara_estado_admin_id) inserts.push({ orden_id: orderId, tipo_flujo:'admin', estado_admin_id: estado.dispara_estado_admin_id, usuario_id: session.user.id });
@@ -545,6 +555,8 @@ function OrderDetail({ orderId, appData, session, reloadOrdenes, goBack }){
             <${Badge} variant=${badgeVariant(o.estado_admin?.nombre)}>${o.estado_admin?.nombre||'—'}<//>
             <p class="text-xs text-muted-foreground mt-3 mb-1.5">Técnico</p>
             <${Badge} variant=${badgeVariant(o.estado_tecnico?.nombre)}>${o.estado_tecnico?.nombre||'—'}<//>
+            <p class="text-xs text-muted-foreground mt-3 mb-1.5">Ubicación actual</p>
+            <${Badge} variant="outline">${o.ubicacion_actual?.nombre||'—'}<//>
             ${o.estado_admin?.mensaje_whatsapp ? html`
               <div class="bg-muted rounded-md p-2.5 text-sm whitespace-pre-wrap mt-3 mb-3 border border-border">${fillTemplate(o.estado_admin.mensaje_whatsapp, o)}</div>
               <${Button} variant="secondary" className="w-full" onClick=${enviarWhatsapp}>${Icon('message')} Abrir WhatsApp<//>
@@ -642,6 +654,9 @@ function ConfigEstadosAdmin({ reloadRef }){
   const [page, setPage] = useState(1);
   const [newName, setNewName] = useState('');
 
+  const [ubicacionesAll, setUbicacionesAll] = useState([]);
+  useEffect(() => { sb.from('ubicaciones').select('*').order('orden').then(({data}) => setUbicacionesAll(data||[])); }, []);
+
   const filtered = rows.filter(r => !search || r.nombre.toLowerCase().includes(search.toLowerCase()));
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageClamped = Math.min(page, totalPages);
@@ -654,16 +669,20 @@ function ConfigEstadosAdmin({ reloadRef }){
   return html`
     <div>
       <h1 class="text-xl font-bold mb-1">Estados administrativos</h1>
-      <p class="text-sm text-muted-foreground mb-5">Definen el flujo administrativo y el mensaje de WhatsApp que se arma para cada uno.</p>
+      <p class="text-sm text-muted-foreground mb-5">Definen el flujo administrativo, el mensaje de WhatsApp y la ubicación que quedan al aplicar cada uno.</p>
       <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} newName=${newName} setNewName=${setNewName} onAdd=${add} addPlaceholder="Nombre del nuevo estado" />
-      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'160px 1fr 60px'}}>
-        <span>Nombre</span><span>Mensaje WhatsApp</span><span>Activo</span>
+      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'140px 1fr 140px 60px'}}>
+        <span>Nombre</span><span>Mensaje WhatsApp</span><span>Ubicación</span><span>Activo</span>
       </div>
       ${list.length === 0 ? html`<p class="text-sm text-muted-foreground">Sin resultados.</p>` : null}
       ${list.map(e => html`
-        <div key=${e.id} class="grid gap-2.5 items-start px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'160px 1fr 60px'}}>
+        <div key=${e.id} class="grid gap-2.5 items-start px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'140px 1fr 140px 60px'}}>
           <${Input} className="border-transparent bg-transparent shadow-none h-8" defaultValue=${e.nombre} onBlur=${ev => ev.target.value !== e.nombre && saveField(e.id, 'nombre', ev.target.value)} />
           <${Textarea} className="border-transparent bg-transparent shadow-none text-xs" rows="2" defaultValue=${e.mensaje_whatsapp||''} onBlur=${ev => ev.target.value !== (e.mensaje_whatsapp||'') && saveField(e.id, 'mensaje_whatsapp', ev.target.value)} />
+          <${Select} defaultValue=${e.ubicacion_id || ''} onChange=${ev => saveField(e.id, 'ubicacion_id', ev.target.value || null)}>
+            <option value="">Sin cambio</option>
+            ${ubicacionesAll.map(u => html`<option key=${u.id} value=${u.id}>${u.nombre}</option>`)}
+          <//>
           <${Switch} checked=${e.activo} onChange=${() => toggle(e.id, e.activo)} />
         </div>
       `)}
@@ -685,6 +704,8 @@ function ConfigEstadosTecnicos({ appData, reloadRef }){
 
   const [estadosAdminAll, setEstadosAdminAll] = useState([]);
   useEffect(() => { sb.from('estados_admin').select('*').order('orden').then(({data}) => setEstadosAdminAll(data||[])); }, []);
+  const [ubicacionesAll, setUbicacionesAll] = useState([]);
+  useEffect(() => { sb.from('ubicaciones').select('*').order('orden').then(({data}) => setUbicacionesAll(data||[])); }, []);
 
   const saveField = async (id, field, value) => { await sb.from('estados_tecnicos').update({ [field]: value }).eq('id', id); await reload(); await reloadRef(); };
   const toggle = async (id, activo) => { await sb.from('estados_tecnicos').update({ activo: !activo }).eq('id', id); await reload(); await reloadRef(); };
@@ -693,18 +714,22 @@ function ConfigEstadosTecnicos({ appData, reloadRef }){
   return html`
     <div>
       <h1 class="text-xl font-bold mb-1">Estados técnicos</h1>
-      <p class="text-sm text-muted-foreground mb-5">Podés hacer que un estado técnico dispare automáticamente un estado administrativo.</p>
+      <p class="text-sm text-muted-foreground mb-5">Podés hacer que un estado técnico dispare un estado administrativo y/o deje al equipo en una ubicación.</p>
       <${ConfigToolbar} search=${search} setSearch=${(v) => { setSearch(v); setPage(1); }} newName=${newName} setNewName=${setNewName} onAdd=${add} addPlaceholder="Nombre del nuevo estado" />
-      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'160px 1fr 60px'}}>
-        <span>Nombre</span><span>Dispara en admin</span><span>Activo</span>
+      <div class="grid gap-2.5 px-3.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5" style=${{gridTemplateColumns:'140px 1fr 140px 60px'}}>
+        <span>Nombre</span><span>Dispara en admin</span><span>Ubicación</span><span>Activo</span>
       </div>
       ${list.length === 0 ? html`<p class="text-sm text-muted-foreground">Sin resultados.</p>` : null}
       ${list.map(e => html`
-        <div key=${e.id} class="grid gap-2.5 items-center px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'160px 1fr 60px'}}>
+        <div key=${e.id} class="grid gap-2.5 items-center px-3.5 py-2.5 bg-card border border-border rounded-md mb-2" style=${{gridTemplateColumns:'140px 1fr 140px 60px'}}>
           <${Input} className="border-transparent bg-transparent shadow-none h-8" defaultValue=${e.nombre} onBlur=${ev => ev.target.value !== e.nombre && saveField(e.id, 'nombre', ev.target.value)} />
           <${Select} defaultValue=${e.dispara_estado_admin_id || ''} onChange=${ev => saveField(e.id, 'dispara_estado_admin_id', ev.target.value || null)}>
             <option value="">Ninguno</option>
             ${estadosAdminAll.map(a => html`<option key=${a.id} value=${a.id}>${a.nombre}</option>`)}
+          <//>
+          <${Select} defaultValue=${e.ubicacion_id || ''} onChange=${ev => saveField(e.id, 'ubicacion_id', ev.target.value || null)}>
+            <option value="">Sin cambio</option>
+            ${ubicacionesAll.map(u => html`<option key=${u.id} value=${u.id}>${u.nombre}</option>`)}
           <//>
           <${Switch} checked=${e.activo} onChange=${() => toggle(e.id, e.activo)} />
         </div>
@@ -745,7 +770,8 @@ function App(){
         ${view === 'detail' ? html`<${OrderDetail} orderId=${detailId} appData=${appData} session=${session} reloadOrdenes=${reloadOrdenes} goBack=${() => goView('panel')} />` : null}
         ${view === 'cfg-tipos' ? html`<${ConfigSimple} table="tipos_equipo" title="Tipos de equipo" reloadRef=${reloadRef} />` : null}
         ${view === 'cfg-marcas' ? html`<${ConfigSimple} table="marcas" title="Marcas" reloadRef=${reloadRef} />` : null}
-        ${view === 'cfg-eadmin' ? html`<${ConfigEstadosAdmin} reloadRef=${reloadRef} />` : null}
+        ${view === 'cfg-ubicaciones' ? html`<${ConfigSimple} table="ubicaciones" title="Ubicaciones" reloadRef=${reloadRef} />` : null}
+        ${view === 'cfg-eadmin' ? html`<${ConfigEstadosAdmin} appData=${appData} reloadRef=${reloadRef} />` : null}
         ${view === 'cfg-etec' ? html`<${ConfigEstadosTecnicos} appData=${appData} reloadRef=${reloadRef} />` : null}
       </div>
       <${NewOrderDialog} open=${newOrderOpen} onOpenChange=${setNewOrderOpen} appData=${appData} reloadOrdenes=${reloadOrdenes} session=${session} goDetail=${goDetail} />
