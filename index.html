@@ -478,9 +478,17 @@ function OrderDetail({ orderId, appData, session, reloadOrdenes, goBack }){
   const canEditTecnico = role === 'admin' || role === 'tecnico';
   const canEditAdmin = role === 'admin' || role === 'operador';
   const [actSel, setActSel] = useState('');
+  const [ubicSel, setUbicSel] = useState('');
   const [tecnicoSel, setTecnicoSel] = useState(o?.tecnico_id || '');
   const [monto, setMonto] = useState(o?.presupuesto_monto ?? '');
   const [presEstado, setPresEstado] = useState(o?.presupuesto_estado || 'pendiente');
+
+  useEffect(() => {
+    if(!actSel){ setUbicSel(''); return; }
+    const [tipo, estadoId] = actSel.split(':');
+    const estado = tipo === 'admin' ? appData.estadosAdmin.find(e => e.id === estadoId) : appData.estadosTecnicos.find(e => e.id === estadoId);
+    setUbicSel(estado?.ubicacion_id || '');
+  }, [actSel]);
 
   const loadHist = useCallback(async () => {
     const { data, error } = await sb.from('historial_estados')
@@ -498,22 +506,21 @@ function OrderDetail({ orderId, appData, session, reloadOrdenes, goBack }){
     if(!actSel) return;
     const [tipo, estadoId] = actSel.split(':');
     if(tipo === 'admin'){
-      const estado = appData.estadosAdmin.find(e => e.id === estadoId);
       const updates = { estado_admin_id: estadoId, updated_at: new Date().toISOString() };
-      if(estado?.ubicacion_id) updates.ubicacion_actual_id = estado.ubicacion_id;
+      if(ubicSel) updates.ubicacion_actual_id = ubicSel;
       await sb.from('ordenes').update(updates).eq('id', orderId);
       await sb.from('historial_estados').insert({ orden_id: orderId, tipo_flujo:'admin', estado_admin_id: estadoId, usuario_id: session.user.id });
     } else {
       const estado = appData.estadosTecnicos.find(e => e.id === estadoId);
       const updates = { estado_tecnico_id: estadoId, updated_at: new Date().toISOString() };
       if(estado?.dispara_estado_admin_id) updates.estado_admin_id = estado.dispara_estado_admin_id;
-      if(estado?.ubicacion_id) updates.ubicacion_actual_id = estado.ubicacion_id;
+      if(ubicSel) updates.ubicacion_actual_id = ubicSel;
       await sb.from('ordenes').update(updates).eq('id', orderId);
       const inserts = [{ orden_id: orderId, tipo_flujo:'tecnico', estado_tecnico_id: estadoId, usuario_id: session.user.id }];
       if(estado?.dispara_estado_admin_id) inserts.push({ orden_id: orderId, tipo_flujo:'admin', estado_admin_id: estado.dispara_estado_admin_id, usuario_id: session.user.id });
       await sb.from('historial_estados').insert(inserts);
     }
-    await reloadOrdenes(); await loadHist(); setActSel('');
+    await reloadOrdenes(); await loadHist(); setActSel(''); setUbicSel('');
   };
 
   const guardarTecnico = async () => { await sb.from('ordenes').update({ tecnico_id: tecnicoSel || null, updated_at: new Date().toISOString() }).eq('id', orderId); await reloadOrdenes(); };
@@ -540,6 +547,12 @@ function OrderDetail({ orderId, appData, session, reloadOrdenes, goBack }){
                 ${canEditAdmin ? html`<optgroup label="Flujo administrativo">${appData.estadosAdmin.map(e => html`<option key=${e.id} value=${'admin:'+e.id}>${e.nombre}</option>`)}<//>` : null}
                 ${canEditTecnico ? html`<optgroup label="Flujo técnico">${appData.estadosTecnicos.map(e => html`<option key=${e.id} value=${'tecnico:'+e.id}>${e.nombre}</option>`)}<//>` : null}
               <//>
+              <div class="w-40 shrink-0">
+                <${Select} value=${ubicSel} onChange=${e => setUbicSel(e.target.value)}>
+                  <option value="">Sin cambio de ubicación</option>
+                  ${appData.ubicaciones.map(u => html`<option key=${u.id} value=${u.id}>${u.nombre}</option>`)}
+                <//>
+              </div>
               <${Button} className="shrink-0" onClick=${agregarActividad}>${Icon('plus')} Agregar<//>
             </div>
           <//>
